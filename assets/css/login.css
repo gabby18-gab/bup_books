@@ -1,0 +1,193 @@
+/* BUP BOOKS - Combined CSS */
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: linear-gradient(145deg, #0A3143, #1C4E6C);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.login-container {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+
+.login-card {
+    background: #fff;
+    border-radius: 24px;
+    padding: 48px 40px;
+    box-shadow: 0 25px 50px rgba(10, 49, 67, 0.25);
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Decorative elements */
+.login-card::after {
+    content: '';
+    position: absolute;
+    top: -50px;
+    right: -50px;
+    width: 150px;
+    height: 150px;
+    background: radial-gradient(circle, rgba(255, 145, 77, 0.1), rgba(255, 193, 7, 0.05));
+    border-radius: 50%;
+}
+
+/* Logo styles */
+.logo-wrapper {
+    background: linear-gradient(145deg, #0A3143, #1C4E6C);
+    padding: 20px 35px;
+    border-radius: 20px;
+    margin-bottom: 15px;
+    position: relative;
+}
+
+.logo-wrapper::before {
+    content: '';
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    right: -5px;
+    bottom: -5px;
+    background: linear-gradient(145deg, #FF914D, #FFC107);
+    border-radius: 22px;
+    z-index: -1;
+    opacity: 0.6;
+}
+
+.logo-text {
+    font-size: 58px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #FF914D, #FFC107);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+}
+
+.logo-sub {
+    font-size: 28px;
+    font-weight: 700;
+    color: #FFFFFF;
+    letter-spacing: 3px;
+}
+
+.logo-platform {
+    font-size: 20px;
+    font-weight: 600;
+    color: #FFC107;
+    text-transform: uppercase;
+    letter-spacing: 8px;
+    margin-top: 15px;
+    border-top: 3px solid #FF914D;
+    border-bottom: 3px solid #FF914D;
+    padding: 10px 0;
+    width: 100%;
+    max-width: 300px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* Input styles */
+.input-group {
+    position: relative;
+    margin-bottom: 24px;
+}
+
+.input-group input {
+    width: 100%;
+    border: 2px solid #E1E9F0;
+    border-radius: 14px;
+    padding: 18px 16px 10px;
+    font-size: 16px;
+    outline: none;
+    transition: 0.25s ease;
+}
+
+.input-group input:focus {
+    border-color: #FF914D;
+    box-shadow: 0 0 0 5px rgba(255, 145, 77, 0.1);
+}
+
+.input-group label {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6B7F8B;
+    transition: 0.2s ease;
+    background: #fff;
+    padding: 0 5px;
+    pointer-events: none;
+}
+
+.input-group input:focus + label,
+.input-group input:not(:placeholder-shown) + label {
+    top: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #FF914D;
+}
+
+/* Button styles */
+.submit-btn {
+    width: 100%;
+    background: linear-gradient(145deg, #FF914D, #FFB347);
+    color: #fff;
+    border: none;
+    border-radius: 14px;
+    padding: 16px;
+    font-size: 17px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: 0.3s ease;
+    box-shadow: 0 8px 0 #C7511E;
+    position: relative;
+}
+
+.submit-btn:hover {
+    transform: translateY(2px);
+    box-shadow: 0 6px 0 #C7511E;
+}
+
+/* Error and success messages */
+.php-error {
+    background: #FBE9E7;
+    color: #E64A19;
+    padding: 15px;
+    border-radius: 14px;
+    margin-bottom: 20px;
+    border-left: 5px solid #E64A19;
+    text-align: left;
+}
+
+.success-message {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.success-message h3 {
+    color: #0A3143;
+    font-weight: 700;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 36px 28px;
+    }
+    
+    .logo-text {
+        font-size: 48px;
+    }
+}

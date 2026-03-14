@@ -65,8 +65,8 @@ if (!isset($db_error)) {
         $stats['cart_count'] = 0;
     }
     
-    // Simple notification count - just a static number for now
-    $stats['notification_count'] = 3; // Show 3 notifications
+    // Simple notification count
+    $stats['notification_count'] = 3;
     
     // Get seller ID if user is a seller
     $stmt = $pdo->prepare("SELECT SellerID FROM seller WHERE UserID = ?");
@@ -85,11 +85,9 @@ if (!isset($db_error)) {
         $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
         
         // Determine the correct name column
-        $name_column = 'UserName'; // default
+        $name_column = 'Name'; // default
         if (in_array('FullName', $columns)) {
             $name_column = 'FullName';
-        } elseif (in_array('Name', $columns)) {
-            $name_column = 'Name';
         } elseif (in_array('username', $columns)) {
             $name_column = 'username';
         } elseif (in_array('user_name', $columns)) {
@@ -206,7 +204,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - BUP BOOKS</title>
+    <title>Dashboard - BUP Platform Book Resale</title>
     
     <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -323,22 +321,25 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             width: 80px;
         }
 
-        .sidebar.collapsed .logo-text,
-        .sidebar.collapsed .logo-sub,
-        .sidebar.collapsed .user-name,
-        .sidebar.collapsed .user-email,
-        .sidebar.collapsed .seller-badge,
-        .sidebar.collapsed .nav-text {
+        .sidebar.collapsed .logo-container {
+            padding: 10px 0;
+        }
+
+        .sidebar.collapsed .logo-image {
+            width: 50px;
+            height: 50px;
+        }
+
+        .sidebar.collapsed .logo-glow {
+            width: 60px;
+            height: 60px;
+        }
+
+        .sidebar.collapsed .logo-text-container {
             display: none;
         }
 
-        .sidebar.collapsed .logo-wrapper {
-            padding: 12px 0;
-            width: 50px;
-            margin: 0 auto;
-        }
-
-        .sidebar.collapsed .logo-wrapper::before {
+        .sidebar.collapsed .logo-divider {
             display: none;
         }
 
@@ -380,6 +381,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             margin-left: 80px;
         }
 
+        /* Enhanced Logo Design - Circular */
         .sidebar-logo {
             display: flex;
             flex-direction: column;
@@ -389,57 +391,103 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
-        .logo-wrapper {
+        .logo-container {
+            position: relative;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            background: rgba(255,255,255,0.1);
-            padding: 12px 25px;
-            border-radius: 20px;
-            position: relative;
-            margin-bottom: 5px;
-            backdrop-filter: blur(5px);
+            width: 100%;
+            padding: 15px;
             transition: all 0.3s ease;
         }
 
-        .logo-wrapper::before {
-            content: '';
+        .logo-glow {
             position: absolute;
-            top: 3px;
-            left: 3px;
-            right: -3px;
-            bottom: -3px;
-            background: var(--bup-gradient-accent);
-            border-radius: 22px;
-            z-index: -1;
-            opacity: 0.5;
-            transition: all 0.3s ease;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(255,145,77,0.4) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+            animation: pulse 3s infinite;
         }
 
-        .logo-text {
-            font-size: 32px;
-            font-weight: 900;
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                opacity: 0.5;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(0.95);
+                opacity: 0.5;
+            }
+        }
+
+        .logo-image-wrapper {
+            position: relative;
+            z-index: 1;
+            background: linear-gradient(145deg, rgba(255,255,255,0.2), rgba(255,255,255,0.05));
+            border-radius: 50%;
+            padding: 8px;
+            backdrop-filter: blur(10px);
+            border: 3px solid rgba(255,255,255,0.3);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .logo-image-wrapper:hover {
+            transform: translateY(-3px) scale(1.02);
+            border-color: var(--bup-orange);
+            box-shadow: 0 15px 40px rgba(255,145,77,0.4);
+        }
+
+        .logo-image {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            object-fit: cover;
+            transition: all 0.3s ease;
+            border: 2px solid rgba(255,255,255,0.5);
+        }
+
+        .logo-text-container {
+            text-align: center;
+            z-index: 1;
+            margin-bottom: 8px;
+        }
+
+        .logo-title {
+            font-size: 18px;
+            font-weight: 800;
             background: linear-gradient(135deg, var(--bup-orange), var(--bup-yellow));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            letter-spacing: 3px;
-            line-height: 1;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
             text-transform: uppercase;
-            transition: all 0.3s ease;
         }
 
-        .logo-sub {
-            font-size: 13px;
-            font-weight: 600;
-            color: white;
+        .logo-subtitle {
+            font-size: 11px;
+            color: rgba(255,255,255,0.8);
             letter-spacing: 2px;
-            background: rgba(255,145,77,0.3);
-            padding: 3px 12px;
-            border-radius: 30px;
-            margin-top: 3px;
-            transition: all 0.3s ease;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        /* Static divider line */
+        .logo-divider {
+            width: 80px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--bup-orange), var(--bup-yellow), transparent);
+            margin-top: 5px;
+            z-index: 1;
         }
 
         .user-info {
@@ -463,6 +511,10 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             box-shadow: 0 8px 0 #C7511E, 0 15px 25px rgba(0,0,0,0.2);
             border: 3px solid white;
             transition: all 0.3s ease;
+        }
+
+        .user-avatar:hover {
+            transform: scale(1.05);
         }
 
         .user-name {
@@ -490,6 +542,19 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             margin-top: 8px;
             letter-spacing: 0.5px;
             transition: all 0.3s ease;
+            animation: badgePulse 2s infinite;
+        }
+
+        @keyframes badgePulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(255,193,7,0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(255,193,7,0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(255,193,7,0);
+            }
         }
 
         .nav-menu {
@@ -613,7 +678,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             font-size: 18px;
         }
 
-        /* Simple Notification Icon */
+        /* Notification Icon */
         .notification-wrapper {
             position: relative;
             cursor: pointer;
@@ -1132,43 +1197,59 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         }
 
         .seller-icon {
-            font-size: 50px;
-            color: var(--bup-orange);
-            margin-bottom: 15px;
+            width: 80px;
+            height: 80px;
+            background: var(--bup-orange);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            font-size: 40px;
+            color: white;
         }
 
         .seller-card h3 {
-            font-size: 22px;
-            font-weight: 800;
-            color: var(--bup-blue);
+            font-size: 24px;
+            font-weight: 700;
             margin-bottom: 10px;
+            color: var(--bup-blue);
         }
 
         .btn-seller {
+            display: inline-block;
             background: var(--bup-gradient-accent);
             color: var(--bup-blue);
-            font-weight: 700;
-            padding: 12px 35px;
+            padding: 15px 30px;
             border-radius: 50px;
+            font-weight: 700;
             text-decoration: none;
-            display: inline-block;
-            margin-top: 15px;
-            box-shadow: 0 5px 0 #C7511E;
-            transition: all 0.3s;
+            margin-top: 20px;
+            box-shadow: 0 6px 0 #C7511E;
+            transition: all 0.3s ease;
         }
 
         .btn-seller:hover {
-            transform: translateY(3px);
-            box-shadow: 0 2px 0 #C7511E;
-            color: var(--bup-blue);
+            transform: translateY(2px);
+            box-shadow: 0 3px 0 #C7511E;
         }
 
-        /* Success Toast */
+        /* Profile Card */
+        .profile-card {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            padding: 30px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(225, 233, 240, 0.5);
+        }
+
+        /* Toast Container */
         .toast-container {
             position: fixed;
             bottom: 30px;
             right: 30px;
             z-index: 9999;
+            animation: slideIn 0.3s ease;
         }
 
         .toast-message {
@@ -1180,7 +1261,13 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             display: flex;
             align-items: center;
             gap: 10px;
-            animation: slideIn 0.3s ease;
+            font-weight: 600;
+            font-size: 16px;
+            border-left: 5px solid white;
+        }
+
+        .toast-message i {
+            font-size: 24px;
         }
 
         @keyframes slideIn {
@@ -1316,9 +1403,23 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         </button>
 
         <div class="sidebar-logo">
-            <div class="logo-wrapper">
-                <span class="logo-text">BUP</span>
-                <span class="logo-sub">Book Resale</span>
+            <div class="logo-container">
+                <!-- Glowing effect behind logo -->
+                <div class="logo-glow"></div>
+                
+                <!-- Circular Logo image with wrapper -->
+                <div class="logo-image-wrapper">
+                    <img src="../assets/img/logo.jpg" alt="BUP Platform Book Resale" class="logo-image">
+                </div>
+                
+                <!-- Text below logo -->
+                <div class="logo-text-container">
+                    <div class="logo-title">BUP Platform</div>
+                    <div class="logo-subtitle">Book Resale</div>
+                </div>
+                
+                <!-- Static divider line -->
+                <div class="logo-divider"></div>
             </div>
         </div>
 
@@ -1346,6 +1447,16 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                     <span class="nav-text">Browse Books</span>
                 </a>
             </li>
+            <!-- MY ORDERS LINK ADDED HERE -->
+            <li class="nav-item">
+                <a href="my_orders.php" class="nav-link">
+                    <i class="bi bi-box"></i>
+                    <span class="nav-text">My Orders</span>
+                    <?php if($stats['active_orders'] > 0): ?>
+                    <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['active_orders']; ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
             <?php if ($is_seller): ?>
             <li class="nav-item">
                 <a href="my-books.php" class="nav-link">
@@ -1367,6 +1478,15 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 </a>
             </li>
             <?php endif; ?>
+            <li class="nav-item">
+                <a href="cart.php" class="nav-link">
+                    <i class="bi bi-cart"></i>
+                    <span class="nav-text">My Cart</span>
+                    <?php if($stats['cart_count'] > 0): ?>
+                    <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['cart_count']; ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
             <li class="nav-item">
                 <a href="wishlist.php" class="nav-link">
                     <i class="bi bi-heart"></i>
@@ -1444,9 +1564,21 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                                 <span>Edit Profile</span>
                             </a>
                             
-                            <a href="orders.php" class="profile-menu-item">
+                            <!-- MY ORDERS LINK ADDED HERE (changed from orders.php to my_orders.php) -->
+                            <a href="my_orders.php" class="profile-menu-item">
                                 <i class="bi bi-box"></i>
                                 <span>My Orders</span>
+                                <?php if($stats['active_orders'] > 0): ?>
+                                <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['active_orders']; ?></span>
+                                <?php endif; ?>
+                            </a>
+                            
+                            <a href="cart.php" class="profile-menu-item">
+                                <i class="bi bi-cart"></i>
+                                <span>My Cart</span>
+                                <?php if($stats['cart_count'] > 0): ?>
+                                <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['cart_count']; ?></span>
+                                <?php endif; ?>
                             </a>
                             
                             <a href="settings.php" class="profile-menu-item">
@@ -1549,7 +1681,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 <div class="book-details">
                     <h3 class="book-title"><?php echo htmlspecialchars(substr($book['ProductName'], 0, 30)) . (strlen($book['ProductName']) > 30 ? '...' : ''); ?></h3>
                     <span class="book-category"><?php echo htmlspecialchars($book['Category']); ?></span>
-                    <div class="book-price">$<?php echo number_format($book['Price'], 2); ?></div>
+                    <div class="book-price">৳<?php echo number_format($book['Price'], 2); ?></div>
                     <div class="book-seller">
                         <i class="bi bi-person-circle"></i>
                         <span><?php echo htmlspecialchars($book['SellerName'] ?? 'Unknown Seller'); ?></span>
@@ -1557,7 +1689,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                         <span><?php echo htmlspecialchars($book['SellerContact'] ?? 'N/A'); ?></span>
                     </div>
                     <div class="book-actions">
-                        <button class="btn-add-to-cart" onclick="addToCart(<?php echo $book['ProductID']; ?>, '<?php echo htmlspecialchars($book['ProductName']); ?>')" <?php echo $book['StockQuantity'] == 0 ? 'disabled' : ''; ?>>
+                        <button class="btn-add-to-cart" onclick="addToCart(<?php echo $book['ProductID']; ?>, '<?php echo htmlspecialchars($book['ProductName']); ?>', this)" <?php echo $book['StockQuantity'] == 0 ? 'disabled' : ''; ?>>
                             <i class="bi bi-cart-plus"></i>
                             Add to Cart
                         </button>
@@ -1750,34 +1882,139 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         }
 
         // Show toast message
-        function showToast(message) {
-            const toast = document.getElementById('toastContainer');
-            document.getElementById('toastMessage').textContent = message;
-            toast.style.display = 'block';
+        function showToast(message, type = 'success') {
+            const toastContainer = document.getElementById('toastContainer');
+            const toastMessage = document.getElementById('toastMessage');
+            const toast = toastContainer.querySelector('.toast-message');
             
+            // Set color based on type
+            if (type === 'error') {
+                toast.style.background = '#dc3545';
+            } else if (type === 'warning') {
+                toast.style.background = '#ffc107';
+            } else if (type === 'info') {
+                toast.style.background = '#17a2b8';
+            } else {
+                toast.style.background = '#28a745';
+            }
+            
+            toastMessage.textContent = message;
+            toastContainer.style.display = 'block';
+            
+            // Auto hide after 3 seconds
             setTimeout(() => {
-                toast.style.display = 'none';
+                toastContainer.style.display = 'none';
             }, 3000);
+            
+            // Hide on click
+            toastContainer.addEventListener('click', function() {
+                this.style.display = 'none';
+            });
         }
 
-        // Add to cart function
-        function addToCart(productId, productName) {
+        // Helper function to update cart badge
+        function updateCartBadge(count) {
+            const cartBadge = document.querySelector('.cart-badge');
+            if (cartBadge) {
+                cartBadge.textContent = count;
+                if (count <= 0) {
+                    cartBadge.style.display = 'none';
+                } else {
+                    cartBadge.style.display = 'flex';
+                }
+            }
+            
+            // Also update cart badge in sidebar if exists
+            const sidebarCartBadge = document.querySelector('.nav-link .badge');
+            if (sidebarCartBadge) {
+                sidebarCartBadge.textContent = count;
+            }
+        }
+
+        // Helper function to animate cart icon
+        function animateCartIcon() {
+            const cartIcon = document.querySelector('.cart-icon');
+            if (cartIcon) {
+                cartIcon.style.transform = 'scale(1.3)';
+                cartIcon.style.transition = 'transform 0.3s ease';
+                setTimeout(() => {
+                    cartIcon.style.transform = 'scale(1)';
+                }, 300);
+            }
+        }
+
+        // FIXED ADD TO CART FUNCTION - ACTUALLY CALLS THE PHP FILE
+        function addToCart(productId, productName, button) {
+            // Prevent if button is disabled
+            if (button.disabled) return;
+            
             // Show loading spinner
             document.getElementById('loadingSpinner').style.display = 'flex';
             
-            // Simulate AJAX request to add to cart
-            setTimeout(() => {
+            // Disable the button
+            button.disabled = true;
+            const originalText = button.innerHTML;
+            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
+            
+            // Create form data
+            const formData = new FormData();
+            formData.append('product_id', productId);
+            formData.append('quantity', 1);
+            
+            // Send AJAX request to add-to-cart.php
+            fetch('add-to-cart.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
                 // Hide loading spinner
                 document.getElementById('loadingSpinner').style.display = 'none';
                 
-                // Show success message
-                showToast(`"${productName}" added to cart!`);
+                // Re-enable button and restore text
+                button.disabled = false;
+                button.innerHTML = originalText;
                 
-                // Update cart badge (increment)
-                const cartBadge = document.querySelector('.cart-badge');
-                let currentCount = parseInt(cartBadge.textContent);
-                cartBadge.textContent = currentCount + 1;
-            }, 1000);
+                if (data.success) {
+                    // Show success message
+                    showToast(`"${productName}" added to cart!`, 'success');
+                    
+                    // Update cart badge with the count from server
+                    updateCartBadge(data.cart_count);
+                    
+                    // Animate the cart icon
+                    animateCartIcon();
+                    
+                    // Update the "In Cart" stat card
+                    const cartStatNumber = document.querySelector('.stat-card:last-child .stat-number');
+                    if (cartStatNumber) {
+                        cartStatNumber.textContent = data.cart_count;
+                    }
+                } else {
+                    // Show error message
+                    showToast(data.message || 'Failed to add item to cart', 'error');
+                    
+                    // If login required, redirect to login
+                    if (data.message && data.message.includes('login')) {
+                        setTimeout(() => {
+                            window.location.href = '../login.php';
+                        }, 2000);
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                
+                // Hide loading spinner
+                document.getElementById('loadingSpinner').style.display = 'none';
+                
+                // Re-enable button and restore text
+                button.disabled = false;
+                button.innerHTML = originalText;
+                
+                // Show error message
+                showToast('Failed to add item to cart. Please try again.', 'error');
+            });
         }
 
         // Search functionality
@@ -1792,7 +2029,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             }
         });
 
-        // Show loading spinner on link clicks
+        // Show loading spinner on link clicks (except add-to-cart buttons)
         document.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');

@@ -36,6 +36,10 @@ $stats['total_sellers'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM product WHERE Status = 'A'");
 $stats['total_products'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
+// Pending products
+$stmt = $pdo->query("SELECT COUNT(*) as count FROM product WHERE Status = 'P'");
+$stats['pending_products'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
+
 // Total orders
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM orders");
 $stats['total_orders'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
@@ -48,7 +52,7 @@ $stats['total_revenue'] = $stmt->fetch(PDO::FETCH_ASSOC)['total'] ?? 0;
 $stmt = $pdo->query("SELECT COUNT(*) as count FROM orders WHERE Status = 'pending'");
 $stats['pending_orders'] = $stmt->fetch(PDO::FETCH_ASSOC)['count'];
 
-// Get order status distribution for chart
+// Get order status distribution for chart (data still available if needed later)
 $stmt = $pdo->query("
     SELECT Status, COUNT(*) as count 
     FROM orders 
@@ -104,7 +108,7 @@ $recent_orders = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
 // Top selling products
 $stmt = $pdo->query("
-    SELECT p.ProductName, p.Price, SUM(od.Quantity) as TotalSold 
+    SELECT p.ProductID, p.ProductName, p.Price, SUM(od.Quantity) as TotalSold 
     FROM product p 
     JOIN orderdetails od ON p.ProductID = od.ProductID 
     GROUP BY p.ProductID 
@@ -138,9 +142,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <style>
         :root {
@@ -213,14 +214,9 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .admin-info {
             text-align: center;
             margin-bottom: 30px;
-            cursor: pointer;
-            transition: all 0.3s ease;
             padding: 15px;
+            background: rgba(255,255,255,0.05);
             border-radius: 16px;
-        }
-        
-        .admin-info:hover {
-            background: rgba(255,255,255,0.1);
         }
 
         .admin-avatar {
@@ -353,33 +349,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             align-items: center;
         }
 
-        .notification-badge {
-            position: relative;
-            cursor: pointer;
-        }
-
-        .notification-badge i {
-            font-size: 24px;
-            color: var(--bup-gray);
-        }
-
-        .badge-count {
-            position: absolute;
-            top: -5px;
-            right: -8px;
-            background: var(--bup-orange);
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            border: 2px solid white;
-        }
-
         /* Stats Cards */
         .stats-grid {
             display: grid;
@@ -436,36 +405,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             justify-content: center;
             font-size: 30px;
             color: var(--bup-orange);
-        }
-
-        /* Chart Card */
-        .chart-card {
-            background: white;
-            border-radius: 20px;
-            padding: 25px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--bup-gray-light);
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .chart-header h3 {
-            font-size: 18px;
-            font-weight: 700;
-            margin: 0;
-        }
-
-        .chart-header span {
-            font-size: 13px;
-            color: var(--bup-gray);
-            background: var(--bup-gray-light);
-            padding: 5px 12px;
-            border-radius: 30px;
         }
 
         /* Tables */
@@ -579,54 +518,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
         .btn-edit:hover {
             background: var(--bup-orange);
             color: white;
-        }
-
-        /* Quick Actions */
-        .quick-actions {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .action-card {
-            background: white;
-            border-radius: 16px;
-            padding: 20px;
-            text-align: center;
-            border: 2px dashed var(--bup-gray-light);
-            transition: all 0.3s;
-            cursor: pointer;
-        }
-
-        .action-card:hover {
-            border-color: var(--bup-orange);
-            transform: translateY(-5px);
-        }
-
-        .action-icon {
-            width: 60px;
-            height: 60px;
-            background: var(--bup-gradient-accent);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 15px;
-            font-size: 24px;
-            color: white;
-        }
-
-        .action-card h4 {
-            font-size: 16px;
-            font-weight: 700;
-            margin-bottom: 5px;
-        }
-
-        .action-card p {
-            font-size: 13px;
-            color: var(--bup-gray);
-            margin: 0;
         }
 
         /* Responsive */
@@ -744,6 +635,15 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </a>
             </li>
             <li class="nav-item">
+                <a href="pending_products.php" class="nav-link">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Pending Approvals</span>
+                    <?php if ($stats['pending_products'] > 0): ?>
+                        <span class="badge bg-warning ms-auto"><?php echo $stats['pending_products']; ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="orders.php" class="nav-link">
                     <i class="bi bi-cart"></i>
                     <span>Orders</span>
@@ -765,18 +665,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 <a href="admins.php" class="nav-link">
                     <i class="bi bi-shield"></i>
                     <span>Admins</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="logs.php" class="nav-link">
-                    <i class="bi bi-journal-text"></i>
-                    <span>Activity Logs</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="reports.php" class="nav-link">
-                    <i class="bi bi-graph-up"></i>
-                    <span>Reports</span>
                 </a>
             </li>
             <li class="nav-item">
@@ -810,7 +698,7 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
     <!-- Main Content -->
     <div class="main-content">
         
-        <!-- Header -->
+        <!-- Header (without notifications and quick actions button) -->
         <div class="header">
             <div class="page-title">
                 <h1>Dashboard</h1>
@@ -818,24 +706,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <i class="bi bi-calendar me-2" style="color: var(--bup-orange);"></i>
                     <?php echo date('l, F j, Y'); ?>
                 </p>
-            </div>
-            <div class="header-actions">
-                <div class="notification-badge">
-                    <i class="bi bi-bell"></i>
-                    <span class="badge-count"><?php echo $stats['pending_orders']; ?></span>
-                </div>
-                <div class="dropdown">
-                    <button class="btn" style="background: var(--bup-gradient-accent); color: var(--bup-blue); font-weight: 700; border-radius: 30px; padding: 10px 20px; border: none; box-shadow: 0 4px 0 #C7511E;" data-bs-toggle="dropdown">
-                        <i class="bi bi-plus-circle me-2"></i>Quick Actions
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="users.php?action=add"><i class="bi bi-person-plus me-2"></i>Add User</a></li>
-                        <li><a class="dropdown-item" href="products.php?action=add"><i class="bi bi-book me-2"></i>Add Product</a></li>
-                        <li><a class="dropdown-item" href="admins.php?action=add"><i class="bi bi-shield me-2"></i>Add Admin</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="reports.php"><i class="bi bi-file-text me-2"></i>Generate Report</a></li>
-                    </ul>
-                </div>
             </div>
         </div>
 
@@ -907,8 +777,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </div>
             </div>
         </div>
-
-       
 
         <!-- Recent Users and Orders -->
         <div class="row">
@@ -1042,7 +910,7 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                             <td><?php echo $product['TotalSold']; ?> units</td>
                             <td style="font-weight: 700; color: var(--bup-orange);">$<?php echo number_format($product['Price'] * $product['TotalSold'], 2); ?></td>
                             <td>
-                                <a href="products.php?view=<?php echo $product['ProductID'] ?? ''; ?>" class="btn-action btn-view">
+                                <a href="products.php?view=<?php echo $product['ProductID']; ?>" class="btn-action btn-view">
                                     <i class="bi bi-eye"></i>
                                 </a>
                             </td>
@@ -1059,11 +927,11 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <?php endif; ?>
         </div>
 
-        <!-- Recent Activity Logs -->
+        <!-- Recent Activity Logs (kept but without sidebar link) -->
         <div class="table-container">
             <div class="section-header">
                 <h3><i class="bi bi-clock-history me-2" style="color: var(--bup-orange);"></i>Recent Activity</h3>
-                <a href="logs.php">View All Logs <i class="bi bi-arrow-right"></i></a>
+                <!-- No "View All" link to logs.php -->
             </div>
             
             <?php if (isset($recent_logs) && count($recent_logs) > 0): ?>
@@ -1102,41 +970,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             </div>
             <?php endif; ?>
         </div>
-
-        <!-- Quick Actions -->
-        <div class="quick-actions">
-            <div class="action-card" onclick="window.location.href='users.php?action=add'">
-                <div class="action-icon">
-                    <i class="bi bi-person-plus"></i>
-                </div>
-                <h4>Add New User</h4>
-                <p>Create a new user account</p>
-            </div>
-            
-            <div class="action-card" onclick="window.location.href='products.php?action=add'">
-                <div class="action-icon">
-                    <i class="bi bi-book"></i>
-                </div>
-                <h4>Add New Book</h4>
-                <p>List a new product</p>
-            </div>
-            
-            <div class="action-card" onclick="window.location.href='reports.php'">
-                <div class="action-icon">
-                    <i class="bi bi-file-text"></i>
-                </div>
-                <h4>Generate Report</h4>
-                <p>Monthly sales report</p>
-            </div>
-            
-            <div class="action-card" onclick="window.location.href='profile.php'">
-                <div class="action-icon">
-                    <i class="bi bi-person-gear"></i>
-                </div>
-                <h4>Edit Profile</h4>
-                <p>Update your information</p>
-            </div>
-        </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -1174,73 +1007,6 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         window.addEventListener('load', function() {
             document.getElementById('loadingSpinner').style.display = 'none';
-        });
-
-        // Initialize Order Status Pie Chart
-        document.addEventListener('DOMContentLoaded', function() {
-            // Order Status Pie Chart
-            const ctx = document.getElementById('orderStatusChart').getContext('2d');
-            
-            const statusLabels = <?php echo json_encode($order_status_labels); ?>;
-            const statusData = <?php echo json_encode($order_status_data); ?>;
-            
-            // Colors for different statuses
-            const backgroundColors = [
-                '#FF914D', // Orange for pending
-                '#0A3143', // Blue for processing  
-                '#28a745', // Green for completed
-                '#dc3545', // Red for cancelled
-                '#FFC107'  // Yellow for others
-            ];
-            
-            new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: statusLabels,
-                    datasets: [{
-                        data: statusData,
-                        backgroundColor: backgroundColors,
-                        borderWidth: 2,
-                        borderColor: '#ffffff',
-                        hoverOffset: 8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                usePointStyle: true,
-                                padding: 15,
-                                font: {
-                                    size: 13,
-                                    weight: '500'
-                                }
-                            }
-                        },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    let label = context.label || '';
-                                    let value = context.raw || 0;
-                                    let total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                    let percentage = total > 0 ? Math.round((value / total) * 100) : 0;
-                                    let formattedValue = new Intl.NumberFormat().format(value);
-                                    return `${label}: ${formattedValue} orders (${percentage}%)`;
-                                }
-                            }
-                        }
-                    },
-                    layout: {
-                        padding: {
-                            bottom: 10,
-                            top: 10
-                        }
-                    }
-                }
-            });
         });
     </script>
 </body>

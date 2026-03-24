@@ -1,7 +1,6 @@
 <?php
-// admin/sellers.php
+// admin/pending_products.php
 session_start();
-
 if (!isset($_SESSION['admin_id'])) {
     header('Location: login.php');
     exit();
@@ -11,31 +10,58 @@ try {
     $pdo = new PDO("mysql:host=localhost;dbname=bup_books", "root", "");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    die("Database connection failed: " . $e->getMessage());
+    die("Database connection error");
 }
 
 $admin_name = $_SESSION['admin_name'];
 $admin_role = $_SESSION['admin_role'];
 
-// Get sellers with stats
-$stmt = $pdo->query("
-    SELECT s.*, u.Name as UserName, u.Email,
-           (SELECT COUNT(*) FROM product WHERE SellerID = s.SellerID) as product_count,
-           (SELECT COUNT(*) FROM orders WHERE SellerID = s.SellerID) as order_count,
-           (SELECT SUM(TotalAmount) FROM orders WHERE SellerID = s.SellerID) as total_revenue
-    FROM seller s
-    JOIN users u ON s.UserID = u.UserID
-    ORDER BY s.CreatedAt DESC
-");
-$sellers = $stmt->fetchAll(PDO::FETCH_ASSOC);
-?>
+// Handle approval/rejection
+if (isset($_GET['action']) && isset($_GET['id'])) {
+    $product_id = $_GET['id'];
+    if ($_GET['action'] == 'approve') {
+        $stmt = $pdo->prepare("UPDATE product SET Status = 'A' WHERE ProductID = ?");
+        $stmt->execute([$product_id]);
 
+        // Get seller's user ID and product name for notification
+        $stmt = $pdo->prepare("SELECT s.UserID, p.ProductName FROM product p JOIN seller s ON p.SellerID = s.SellerID WHERE p.ProductID = ?");
+        $stmt->execute([$product_id]);
+        $sellerData = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($sellerData) {
+            $notifyStmt = $pdo->prepare("INSERT INTO notifications (UserID, Type, Title, Message, Link) VALUES (?, 'book_approved', 'Book Approved', ?, ?)");
+            $notifyStmt->execute([
+                $sellerData['UserID'],
+                "Your book '{$sellerData['ProductName']}' has been approved and is now live.",
+                "../user/book-details.php?id=$product_id"
+            ]);
+        }
+    } elseif ($_GET['action'] == 'reject') {
+        $stmt = $pdo->prepare("UPDATE product SET Status = 'R' WHERE ProductID = ?");
+        $stmt->execute([$product_id]);
+        // Optionally notify seller about rejection
+    }
+    header('Location: pending_products.php');
+    exit();
+}
+
+// Fetch pending products
+$stmt = $pdo->prepare("
+    SELECT p.*, s.Name as SellerName, s.ContactInfo, u.Email 
+    FROM product p
+    JOIN seller s ON p.SellerID = s.SellerID
+    JOIN users u ON s.UserID = u.UserID
+    WHERE p.Status = 'P'
+    ORDER BY p.ProductID DESC
+");
+$stmt->execute();
+$pending_products = $stmt->fetchAll(PDO::FETCH_ASSOC);
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sellers Management - BUP BOOKS</title>
+    <title>Pending Product Approvals - Admin</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -259,92 +285,55 @@ $sellers = $stmt->fetchAll(PDO::FETCH_ASSOC);
             }
         }
 
-        /* Seller Cards */
-        .seller-card {
+        /* Page specific styles */
+        .product-card {
             background: white;
-            border-radius: 20px;
+            border-radius: 16px;
             padding: 20px;
             margin-bottom: 20px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid var(--bup-gray-light);
-            transition: all 0.3s;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid #e1e1e1;
+            transition: all 0.3s ease;
         }
-        .seller-card:hover {
-            transform: translateY(-3px);
-            box-shadow: var(--shadow-md);
+        .product-card:hover {
+            box-shadow: 0 8px 20px rgba(255,145,77,0.15);
             border-color: var(--bup-orange);
         }
-        .seller-logo {
-            width: 60px;
-            height: 60px;
-            background: var(--bup-gradient);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: 700;
-            font-size: 24px;
+        .product-image {
+            max-height: 150px;
+            max-width: 100%;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            padding: 5px;
         }
-        .revenue-positive {
-            color: #28a745;
-            font-weight: 700;
-        }
-        .status-badge {
-            display: inline-block;
-            padding: 6px 16px;
-            border-radius: 50px;
-            font-size: 12px;
-            font-weight: 700;
-        }
-        .status-active {
+        .btn-approve {
             background: rgba(40,167,69,0.15);
             color: #28a745;
+            border: 1px solid #28a745;
         }
-        .status-pending {
-            background: rgba(255,145,77,0.15);
-            color: var(--bup-orange-dark);
-        }
-        .btn-icon {
-            width: 36px;
-            height: 36px;
-            border-radius: 8px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            text-decoration: none;
-            transition: all 0.3s;
-            background: rgba(10,49,67,0.1);
-            color: var(--bup-blue);
-        }
-        .btn-icon:hover {
-            background: var(--bup-orange);
+        .btn-approve:hover {
+            background: #28a745;
             color: white;
-            transform: translateY(-2px);
         }
-        .action-buttons {
-            display: flex;
-            gap: 8px;
+        .btn-reject {
+            background: rgba(220,53,69,0.15);
+            color: #dc3545;
+            border: 1px solid #dc3545;
         }
-        .seller-stats {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid var(--bup-gray-light);
+        .btn-reject:hover {
+            background: #dc3545;
+            color: white;
         }
-        .stat-badge {
-            background: var(--bup-offwhite);
-            padding: 8px 12px;
-            border-radius: 30px;
-            font-size: 13px;
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        .stat-badge i {
+        .badge-pending {
+            background: rgba(255,145,77,0.15);
             color: var(--bup-orange);
+            padding: 5px 12px;
+            border-radius: 30px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .footer-actions {
+            margin-top: 20px;
         }
     </style>
 </head>
@@ -392,7 +381,7 @@ $sellers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </a>
             </li>
             <li class="nav-item">
-                <a href="sellers.php" class="nav-link active">
+                <a href="sellers.php" class="nav-link">
                     <i class="bi bi-shop"></i>
                     <span>Sellers</span>
                 </a>
@@ -404,7 +393,7 @@ $sellers = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 </a>
             </li>
             <li class="nav-item">
-                <a href="pending_products.php" class="nav-link">
+                <a href="pending_products.php" class="nav-link active">
                     <i class="bi bi-clock-history"></i>
                     <span>Pending Approvals</span>
                 </a>
@@ -456,72 +445,65 @@ $sellers = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     <!-- Main Content -->
     <div class="main-content">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 style="font-size: 28px; font-weight: 800; color: var(--bup-blue);">
-                <i class="bi bi-shop me-3" style="color: var(--bup-orange);"></i>Sellers Management
-            </h1>
-        </div>
+        <h2 class="mb-4">
+            <i class="bi bi-clock-history me-2" style="color: var(--bup-orange);"></i>
+            Pending Product Approvals
+            <span class="badge bg-warning ms-2"><?php echo count($pending_products); ?></span>
+        </h2>
 
-        <!-- Sellers Cards (Vertical layout) -->
-        <div class="row">
-            <?php foreach ($sellers as $seller): ?>
-            <div class="col-12">
-                <div class="seller-card">
-                    <div class="row align-items-center">
-                        <div class="col-md-2 text-center text-md-start mb-3 mb-md-0">
-                            <div class="seller-logo mx-auto mx-md-0">
-                                <?php echo strtoupper(substr($seller['Name'], 0, 2)); ?>
+        <?php if (count($pending_products) == 0): ?>
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle me-2"></i>
+                No products pending approval at the moment.
+            </div>
+        <?php else: ?>
+            <?php foreach ($pending_products as $product): ?>
+                <div class="product-card">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-start gap-3">
+                                <?php if (!empty($product['image'])): ?>
+                                    <img src="../<?php echo htmlspecialchars($product['image']); ?>" alt="Cover" class="product-image" style="max-width: 100px;">
+                                <?php else: ?>
+                                    <div class="product-image" style="width: 100px; height: 100px; background: #f0f0f0; display: flex; align-items: center; justify-content: center;">
+                                        <i class="bi bi-book" style="font-size: 40px; color: #ccc;"></i>
+                                    </div>
+                                <?php endif; ?>
+                                <div>
+                                    <h4><?php echo htmlspecialchars($product['ProductName']); ?></h4>
+                                    <p class="mb-1">
+                                        <strong>Category:</strong> <?php echo htmlspecialchars($product['Category']); ?><br>
+                                        <strong>Price:</strong> ₱<?php echo number_format($product['Price'], 2); ?><br>
+                                        <strong>Stock:</strong> <?php echo $product['StockQuantity']; ?><br>
+                                        <strong>Seller:</strong> <?php echo htmlspecialchars($product['SellerName']); ?> 
+                                        (<?php echo htmlspecialchars($product['Email']); ?>)<br>
+                                        <strong>Contact:</strong> <?php echo htmlspecialchars($product['ContactInfo']); ?>
+                                    </p>
+                                    <span class="badge-pending"><i class="bi bi-hourglass-split me-1"></i>Pending</span>
+                                </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <h4 class="mb-1"><?php echo htmlspecialchars($seller['Name']); ?></h4>
-                            <p class="text-muted mb-0">
-                                <i class="bi bi-person"></i> <?php echo htmlspecialchars($seller['UserName']); ?><br>
-                                <i class="bi bi-envelope"></i> <?php echo htmlspecialchars($seller['Email']); ?>
-                            </p>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="seller-stats">
-                                <span class="stat-badge"><i class="bi bi-book"></i> <?php echo $seller['product_count']; ?> books</span>
-                                <span class="stat-badge"><i class="bi bi-cart"></i> <?php echo $seller['order_count']; ?> orders</span>
-                                <span class="stat-badge"><i class="bi bi-cash-stack"></i> <span class="revenue-positive">$<?php echo number_format($seller['total_revenue'] ?: 0, 2); ?></span></span>
-                            </div>
-                        </div>
-                        <div class="col-md-2">
-                            <span class="status-badge <?php echo $seller['Status'] == 'A' ? 'status-active' : 'status-pending'; ?>">
-                                <?php echo $seller['Status'] == 'A' ? 'Active' : 'Inactive'; ?>
-                            </span>
-                        </div>
-                        <div class="col-md-1 text-end">
-                            <div class="action-buttons">
-                                <a href="sellers.php?view=<?php echo $seller['SellerID']; ?>" class="btn-icon" title="View">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-                                <a href="sellers.php?edit=<?php echo $seller['SellerID']; ?>" class="btn-icon" title="Edit">
-                                    <i class="bi bi-pencil"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row mt-3">
-                        <div class="col-12">
-                            <small class="text-muted">
-                                <i class="bi bi-telephone"></i> <?php echo htmlspecialchars($seller['ContactInfo']); ?> &nbsp;|&nbsp;
-                                <i class="bi bi-calendar"></i> Joined: <?php echo date('M d, Y', strtotime($seller['CreatedAt'])); ?>
-                            </small>
+                        <div class="col-md-4 text-md-end mt-3 mt-md-0">
+                            <a href="?action=approve&id=<?php echo $product['ProductID']; ?>" 
+                               class="btn btn-approve me-2" 
+                               onclick="return confirm('Approve this listing? It will become visible to buyers.')">
+                                <i class="bi bi-check-circle"></i> Approve
+                            </a>
+                            <a href="?action=reject&id=<?php echo $product['ProductID']; ?>" 
+                               class="btn btn-reject" 
+                               onclick="return confirm('Reject this listing? It will be removed from pending.')">
+                                <i class="bi bi-x-circle"></i> Reject
+                            </a>
                         </div>
                     </div>
                 </div>
-            </div>
             <?php endforeach; ?>
-            <?php if (count($sellers) == 0): ?>
-            <div class="col-12">
-                <div class="text-center py-5">
-                    <i class="bi bi-shop" style="font-size: 64px; color: var(--bup-gray-light);"></i>
-                    <h4 class="mt-3 text-muted">No sellers found</h4>
-                </div>
-            </div>
-            <?php endif; ?>
+        <?php endif; ?>
+
+        <div class="footer-actions">
+            <a href="dashboard.php" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Dashboard
+            </a>
         </div>
     </div>
 

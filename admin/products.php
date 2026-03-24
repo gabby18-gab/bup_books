@@ -193,6 +193,11 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             --bup-offwhite: #F8FAFC;
             --bup-gray: #5A6C74;
             --bup-gray-light: #E1E9F0;
+            --bup-gradient: linear-gradient(145deg, #0A3143, #1C4E6C);
+            --bup-gradient-accent: linear-gradient(145deg, #FF914D, #FFC107);
+            --shadow-sm: 0 5px 15px rgba(0,0,0,0.05);
+            --shadow-md: 0 10px 25px rgba(255,145,77,0.15);
+            --shadow-lg: 0 15px 35px rgba(10,49,67,0.2);
         }
 
         * {
@@ -205,6 +210,7 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             font-family: 'Inter', sans-serif;
             background: var(--bup-offwhite);
             color: var(--bup-blue);
+            overflow-x: hidden;
         }
 
         /* Sidebar */
@@ -214,11 +220,13 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             left: 0;
             width: 280px;
             height: 100vh;
-            background: linear-gradient(145deg, #0A3143, #1C4E6C);
+            background: var(--bup-gradient);
             color: white;
             padding: 30px 20px;
             overflow-y: auto;
+            transition: all 0.3s ease;
             z-index: 1000;
+            box-shadow: 5px 0 30px rgba(0,0,0,0.15);
         }
 
         .sidebar-logo {
@@ -229,59 +237,65 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
         }
 
         .logo-text {
-            font-size: 32px;
+            font-size: 36px;
             font-weight: 900;
             background: linear-gradient(135deg, var(--bup-orange), var(--bup-yellow));
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
         }
 
         .logo-sub {
-            font-size: 12px;
+            font-size: 14px;
             color: var(--bup-yellow);
+            letter-spacing: 2px;
+            font-weight: 600;
         }
 
         .admin-info {
             text-align: center;
             margin-bottom: 30px;
-            padding: 15px;
+            padding: 20px 15px;
             background: rgba(255,255,255,0.05);
-            border-radius: 16px;
+            border-radius: 20px;
         }
 
         .admin-avatar {
-            width: 70px;
-            height: 70px;
-            background: var(--bup-orange);
+            width: 80px;
+            height: 80px;
+            background: var(--bup-gradient-accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 10px;
-            font-size: 28px;
+            margin: 0 auto 15px;
+            font-size: 32px;
             font-weight: 700;
             color: var(--bup-blue);
             border: 3px solid white;
+            box-shadow: 0 8px 0 #C7511E;
         }
 
         .admin-name {
-            font-size: 16px;
+            font-size: 18px;
             font-weight: 700;
+            margin-bottom: 5px;
         }
 
         .admin-badge {
             display: inline-block;
             background: rgba(255,145,77,0.3);
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-size: 11px;
+            padding: 5px 15px;
+            border-radius: 50px;
+            font-size: 12px;
             font-weight: 600;
+            text-transform: uppercase;
         }
 
         .nav-menu {
             list-style: none;
             padding: 0;
-            margin-top: 30px;
+            margin-top: 20px;
         }
 
         .nav-item {
@@ -297,23 +311,95 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             border-radius: 12px;
             transition: all 0.3s;
             gap: 12px;
+            font-weight: 500;
         }
 
         .nav-link:hover, .nav-link.active {
             background: rgba(255,255,255,0.15);
             color: white;
+            transform: translateX(5px);
         }
 
         .nav-link.active {
-            background: var(--bup-orange);
+            background: var(--bup-gradient-accent);
             color: var(--bup-blue);
             font-weight: 700;
+            box-shadow: 0 5px 0 #C7511E;
+        }
+
+        .nav-link i {
+            font-size: 20px;
+            width: 25px;
         }
 
         /* Main Content */
         .main-content {
             margin-left: 280px;
             padding: 30px;
+            transition: all 0.3s ease;
+        }
+
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--bup-gradient-accent);
+            border: none;
+            border-radius: 50%;
+            box-shadow: var(--shadow-lg);
+            color: var(--bup-blue);
+            font-size: 28px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            cursor: pointer;
+        }
+
+        /* Loading Spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--bup-gray-light);
+            border-top-color: var(--bup-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 260px;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .mobile-menu-btn {
+                display: flex;
+            }
         }
 
         /* Stats Cards */
@@ -328,7 +414,7 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             background: white;
             border-radius: 16px;
             padding: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-sm);
             border-left: 5px solid var(--bup-orange);
         }
 
@@ -337,8 +423,9 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             background: white;
             border-radius: 20px;
             padding: 25px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            box-shadow: var(--shadow-sm);
             margin-bottom: 30px;
+            border: 1px solid var(--bup-gray-light);
         }
 
         /* Buttons */
@@ -532,8 +619,18 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
 </head>
 <body>
 
+    <!-- Loading Spinner -->
+    <div class="spinner-overlay" id="loadingSpinner">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
     <!-- Sidebar -->
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
         <div class="sidebar-logo">
             <div class="logo-text">BUP</div>
             <div class="logo-sub">ADMIN PANEL</div>
@@ -545,6 +642,7 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             </div>
             <div class="admin-name"><?php echo htmlspecialchars($admin_name); ?></div>
             <span class="admin-badge">
+                <i class="bi bi-shield-lock me-1"></i>
                 <?php echo ucfirst(str_replace('_', ' ', $admin_role)); ?>
             </span>
         </div>
@@ -552,32 +650,74 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
         <ul class="nav-menu">
             <li class="nav-item">
                 <a href="dashboard.php" class="nav-link">
-                    <i class="bi bi-speedometer2"></i> Dashboard
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="users.php" class="nav-link">
-                    <i class="bi bi-people"></i> Users
+                    <i class="bi bi-people"></i>
+                    <span>Users</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="sellers.php" class="nav-link">
-                    <i class="bi bi-shop"></i> Sellers
+                    <i class="bi bi-shop"></i>
+                    <span>Sellers</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="products.php" class="nav-link active">
-                    <i class="bi bi-book"></i> Products
+                    <i class="bi bi-book"></i>
+                    <span>Products</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="pending_products.php" class="nav-link">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Pending Approvals</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="orders.php" class="nav-link">
-                    <i class="bi bi-cart"></i> Orders
+                    <i class="bi bi-cart"></i>
+                    <span>Orders</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="payments.php" class="nav-link">
+                    <i class="bi bi-credit-card"></i>
+                    <span>Payments</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="feedback.php" class="nav-link">
+                    <i class="bi bi-chat"></i>
+                    <span>Feedback</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="admins.php" class="nav-link">
+                    <i class="bi bi-shield"></i>
+                    <span>Admins</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="profile.php" class="nav-link">
+                    <i class="bi bi-person-gear"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="settings.php" class="nav-link">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
                 </a>
             </li>
             <li class="nav-item">
                 <a href="logout.php" class="nav-link" style="margin-top: 20px; background: rgba(255,69,58,0.2);">
-                    <i class="bi bi-box-arrow-right"></i> Logout
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
                 </a>
             </li>
         </ul>
@@ -656,8 +796,7 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
         <div class="content-card">
             <table class="table">
                 <thead>
-                    <tr>
-                        <th>Product</th>
+                    32<th>Product</th>
                         <th>Category</th>
                         <th>Seller</th>
                         <th>Price</th>
@@ -889,6 +1028,38 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
                 alert.style.display = 'none';
             });
         }, 5000);
+
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        function checkMobileView() {
+            const sidebar = document.getElementById('sidebar');
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            
+            if (window.innerWidth <= 992) {
+                mobileBtn.style.display = 'flex';
+                sidebar.classList.remove('active');
+            } else {
+                mobileBtn.style.display = 'none';
+                sidebar.classList.add('active');
+            }
+        }
+
+        window.addEventListener('resize', checkMobileView);
+        window.addEventListener('load', checkMobileView);
+
+        // Loading spinner
+        document.querySelectorAll('a:not([href^="#"]):not([href^="javascript:"]):not(.btn-icon)').forEach(link => {
+            link.addEventListener('click', function(e) {
+                document.getElementById('loadingSpinner').style.display = 'flex';
+            });
+        });
+
+        window.addEventListener('load', function() {
+            document.getElementById('loadingSpinner').style.display = 'none';
+        });
     </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 <?php
-// user/index.php
+// user/index.php - Book Browsing Page with Full Header
 session_start();
 
 // Check if user is logged in
@@ -13,187 +13,84 @@ try {
     $pdo = new PDO("mysql:host=localhost;dbname=bup_books", "root", "");
     $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 } catch (PDOException $e) {
-    error_log("Dashboard DB connection error: " . $e->getMessage());
+    error_log("Browse books DB error: " . $e->getMessage());
     $db_error = "Could not connect to database. Please try again later.";
 }
 
-// Get user information
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
 $user_email = $_SESSION['user_email'];
 
-// Fetch user stats
-$stats = [
-    'listed_books' => 0,
-    'active_orders' => 0,
-    'completed_trades' => 0,
-    'cart_count' => 0,
-    'notification_count' => 0
-];
-
+// Get seller ID if user is a seller
+$is_seller = false;
+$seller_id = null;
 if (!isset($db_error)) {
-    // Books listed by user (as seller)
-    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM product WHERE SellerID = (SELECT SellerID FROM seller WHERE UserID = ?)");
-    $stmt->execute([$user_id]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    $stats['listed_books'] = $result ? $result['count'] : 0;
-
-    // Orders as buyer
-    $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM orders WHERE UserID = ?");
-    $stmt->execute([$user_id]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    $stats['active_orders'] = $result ? $result['count'] : 0;
-
-    // Completed transactions
-    $stmt = $pdo->prepare("
-        SELECT COUNT(DISTINCT o.OrderID) as count 
-        FROM orders o 
-        LEFT JOIN transactions t ON o.OrderID = t.OrderID 
-        WHERE o.UserID = ? AND t.Status = 'Completed'
-    ");
-    $stmt->execute([$user_id]);
-    $result = $stmt->fetch(PDO::FETCH_ASSOC);
-    $stats['completed_trades'] = $result ? $result['count'] : 0;
-    
-    // Cart count
-    try {
-        $stmt = $pdo->prepare("SELECT COUNT(*) as count FROM cart WHERE UserID = ?");
-        $stmt->execute([$user_id]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        $stats['cart_count'] = $result ? $result['count'] : 0;
-    } catch (PDOException $e) {
-        $stats['cart_count'] = 0;
-    }
-    
-    // Simple notification count
-    $stats['notification_count'] = 3;
-    
-    // Get seller ID if user is a seller
     $stmt = $pdo->prepare("SELECT SellerID FROM seller WHERE UserID = ?");
     $stmt->execute([$user_id]);
     $seller = $stmt->fetch(PDO::FETCH_ASSOC);
-    $seller_id = $seller ? $seller['SellerID'] : null;
-}
-
-// Fetch available books for sale
-$available_books = [];
-if (!isset($db_error)) {
-    try {
-        // Check what column name exists in users table
-        $stmt = $pdo->prepare("DESCRIBE users");
-        $stmt->execute();
-        $columns = $stmt->fetchAll(PDO::FETCH_COLUMN);
-        
-        // Determine the correct name column
-        $name_column = 'Name'; // default
-        if (in_array('FullName', $columns)) {
-            $name_column = 'FullName';
-        } elseif (in_array('username', $columns)) {
-            $name_column = 'username';
-        } elseif (in_array('user_name', $columns)) {
-            $name_column = 'user_name';
-        }
-        
-        $stmt = $pdo->prepare("
-            SELECT p.ProductID, p.ProductName, p.Category, p.Price, p.StockQuantity, p.image, 
-                   u.$name_column as SellerName, u.ContactNo as SellerContact
-            FROM product p
-            LEFT JOIN seller s ON p.SellerID = s.SellerID
-            LEFT JOIN users u ON s.UserID = u.UserID
-            WHERE p.Status = 'A' AND p.StockQuantity > 0
-            ORDER BY p.ProductID DESC
-            LIMIT 6
-        ");
-        $stmt->execute();
-        $available_books = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    } catch (PDOException $e) {
-        error_log("Error fetching books: " . $e->getMessage());
-        $available_books = [];
+    if ($seller) {
+        $is_seller = true;
+        $seller_id = $seller['SellerID'];
     }
 }
 
-// If no books in database, show sample books
-if (empty($available_books)) {
-    $available_books = [
-        [
-            'ProductID' => 1,
-            'ProductName' => 'Engineering Mathematics',
-            'Category' => 'Mathematics',
-            'Price' => 42.60,
-            'StockQuantity' => 5,
-            'image' => null,
-            'SellerName' => 'John Doe',
-            'SellerContact' => '01712345678'
-        ],
-        [
-            'ProductID' => 2,
-            'ProductName' => 'Introduction to Algorithms',
-            'Category' => 'Computer Science',
-            'Price' => 45.00,
-            'StockQuantity' => 3,
-            'image' => null,
-            'SellerName' => 'Jane Smith',
-            'SellerContact' => '01812345678'
-        ],
-        [
-            'ProductID' => 3,
-            'ProductName' => 'Physics for Scientists and Engineers',
-            'Category' => 'Physics',
-            'Price' => 55.00,
-            'StockQuantity' => 2,
-            'image' => null,
-            'SellerName' => 'Robert Johnson',
-            'SellerContact' => '01912345678'
-        ],
-        [
-            'ProductID' => 4,
-            'ProductName' => 'Organic Chemistry',
-            'Category' => 'Chemistry',
-            'Price' => 38.50,
-            'StockQuantity' => 4,
-            'image' => null,
-            'SellerName' => 'Maria Garcia',
-            'SellerContact' => '01612345678'
-        ],
-        [
-            'ProductID' => 5,
-            'ProductName' => 'Data Structures and Algorithms',
-            'Category' => 'Computer Science',
-            'Price' => 49.99,
-            'StockQuantity' => 1,
-            'image' => null,
-            'SellerName' => 'David Wilson',
-            'SellerContact' => '01512345678'
-        ],
-        [
-            'ProductID' => 6,
-            'ProductName' => 'Calculus: Early Transcendentals',
-            'Category' => 'Mathematics',
-            'Price' => 47.25,
-            'StockQuantity' => 6,
-            'image' => null,
-            'SellerName' => 'Sarah Brown',
-            'SellerContact' => '01412345678'
-        ]
-    ];
-}
-
-// Fetch user's profile completion
-$profile_complete = false;
-$profile_data = [];
+// Cart count
+$cart_count = 0;
 if (!isset($db_error)) {
-    try {
-        $stmt = $pdo->prepare("SELECT Address, ContactNo FROM users WHERE UserID = ?");
-        $stmt->execute([$user_id]);
-        $profile_data = $stmt->fetch(PDO::FETCH_ASSOC);
-        $profile_complete = !empty($profile_data['Address']) && !empty($profile_data['ContactNo']);
-    } catch (PDOException $e) {
-        error_log("Error fetching profile: " . $e->getMessage());
-    }
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM cart WHERE UserID = ?");
+    $stmt->execute([$user_id]);
+    $cart_count = $stmt->fetchColumn();
 }
 
-// Check if user is a seller
-$is_seller = isset($seller_id);
+// Unread notifications count
+$unread_notifications = 0;
+if (!isset($db_error)) {
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE UserID = ? AND IsRead = 0");
+    $stmt->execute([$user_id]);
+    $unread_notifications = $stmt->fetchColumn();
+}
+
+// Handle search and filter
+$search = $_GET['search'] ?? '';
+$category_filter = $_GET['category'] ?? '';
+
+// Build query for books
+$books = [];
+if (!isset($db_error)) {
+    $query = "
+        SELECT p.ProductID, p.ProductName, p.Category, p.Price, p.StockQuantity, p.image, 
+               u.Name as SellerName, u.ContactNo as SellerContact
+        FROM product p
+        LEFT JOIN seller s ON p.SellerID = s.SellerID
+        LEFT JOIN users u ON s.UserID = u.UserID
+        WHERE p.Status = 'A' AND p.StockQuantity > 0
+    ";
+    $params = [];
+
+    if (!empty($search)) {
+        $query .= " AND (p.ProductName LIKE ? OR p.Category LIKE ?)";
+        $params[] = "%$search%";
+        $params[] = "%$search%";
+    }
+
+    if (!empty($category_filter)) {
+        $query .= " AND p.Category = ?";
+        $params[] = $category_filter;
+    }
+
+    $query .= " ORDER BY p.ProductID DESC";
+
+    $stmt = $pdo->prepare($query);
+    $stmt->execute($params);
+    $books = $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+
+// Get all distinct categories for filter dropdown
+$categories = [];
+if (!isset($db_error)) {
+    $catStmt = $pdo->query("SELECT DISTINCT Category FROM product WHERE Status = 'A' ORDER BY Category");
+    $categories = $catStmt->fetchAll(PDO::FETCH_COLUMN);
+}
 
 // Handle dark mode preference
 $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled';
@@ -204,7 +101,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - BUP Platform Book Resale</title>
+    <title>Browse Books - BUP Platform Book Resale</title>
     
     <!-- Bootstrap & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -285,6 +182,20 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             box-shadow: 5px 0 30px rgba(0,0,0,0.15);
         }
 
+        .sidebar.collapsed {
+            width: 80px;
+        }
+
+        .sidebar.collapsed ~ .main-content {
+            margin-left: 80px;
+        }
+
+        .main-content {
+            margin-left: 280px;
+            padding: 30px 40px;
+            transition: all 0.3s ease;
+        }
+
         /* Sidebar Toggle Button */
         .sidebar-toggle {
             position: absolute;
@@ -316,72 +227,11 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             transition: transform 0.3s ease;
         }
 
-        /* Collapsed Sidebar */
-        .sidebar.collapsed {
-            width: 80px;
-        }
-
-        .sidebar.collapsed .logo-container {
-            padding: 10px 0;
-        }
-
-        .sidebar.collapsed .logo-image {
-            width: 50px;
-            height: 50px;
-        }
-
-        .sidebar.collapsed .logo-glow {
-            width: 60px;
-            height: 60px;
-        }
-
-        .sidebar.collapsed .logo-text-container {
-            display: none;
-        }
-
-        .sidebar.collapsed .logo-divider {
-            display: none;
-        }
-
-        .sidebar.collapsed .user-info {
-            margin-top: 20px;
-        }
-
-        .sidebar.collapsed .user-avatar {
-            width: 50px;
-            height: 50px;
-            font-size: 24px;
-            margin-bottom: 10px;
-        }
-
-        .sidebar.collapsed .nav-link {
-            padding: 14px 0;
-            justify-content: center;
-        }
-
-        .sidebar.collapsed .nav-link i {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .sidebar.collapsed .nav-link:hover {
-            transform: translateX(0);
-        }
-
-        .sidebar.collapsed .sidebar-toggle {
-            right: -15px;
-        }
-
         .sidebar.collapsed .sidebar-toggle i {
             transform: rotate(180deg);
         }
 
-        /* Adjust main content when sidebar is collapsed */
-        .sidebar.collapsed ~ .main-content {
-            margin-left: 80px;
-        }
-
-        /* Enhanced Logo Design - Circular */
+        /* Logo */
         .sidebar-logo {
             display: flex;
             flex-direction: column;
@@ -399,7 +249,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             justify-content: center;
             width: 100%;
             padding: 15px;
-            transition: all 0.3s ease;
         }
 
         .logo-glow {
@@ -413,18 +262,9 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         }
 
         @keyframes pulse {
-            0% {
-                transform: scale(0.95);
-                opacity: 0.5;
-            }
-            50% {
-                transform: scale(1.05);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(0.95);
-                opacity: 0.5;
-            }
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(0.95); opacity: 0.5; }
         }
 
         .logo-image-wrapper {
@@ -438,12 +278,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             box-shadow: 0 10px 30px rgba(0,0,0,0.3);
             transition: all 0.3s ease;
             margin-bottom: 15px;
-        }
-
-        .logo-image-wrapper:hover {
-            transform: translateY(-3px) scale(1.02);
-            border-color: var(--bup-orange);
-            box-shadow: 0 15px 40px rgba(255,145,77,0.4);
         }
 
         .logo-image {
@@ -481,7 +315,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             text-transform: uppercase;
         }
 
-        /* Static divider line */
         .logo-divider {
             width: 80px;
             height: 2px;
@@ -493,7 +326,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         .user-info {
             text-align: center;
             margin-top: 10px;
-            transition: all 0.3s ease;
         }
 
         .user-avatar {
@@ -510,25 +342,18 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             color: var(--bup-blue);
             box-shadow: 0 8px 0 #C7511E, 0 15px 25px rgba(0,0,0,0.2);
             border: 3px solid white;
-            transition: all 0.3s ease;
-        }
-
-        .user-avatar:hover {
-            transform: scale(1.05);
         }
 
         .user-name {
             font-size: 18px;
             font-weight: 700;
             margin-bottom: 5px;
-            transition: all 0.3s ease;
         }
 
         .user-email {
             font-size: 13px;
             color: rgba(255,255,255,0.8);
             word-break: break-all;
-            transition: all 0.3s ease;
         }
 
         .seller-badge {
@@ -541,20 +366,13 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             border-radius: 30px;
             margin-top: 8px;
             letter-spacing: 0.5px;
-            transition: all 0.3s ease;
             animation: badgePulse 2s infinite;
         }
 
         @keyframes badgePulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(255,193,7,0.7);
-            }
-            70% {
-                box-shadow: 0 0 0 10px rgba(255,193,7,0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(255,193,7,0);
-            }
+            0% { box-shadow: 0 0 0 0 rgba(255,193,7,0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255,193,7,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,193,7,0); }
         }
 
         .nav-menu {
@@ -583,11 +401,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             font-size: 22px;
             width: 25px;
             text-align: center;
-            transition: all 0.3s ease;
-        }
-
-        .nav-text {
-            transition: all 0.3s ease;
         }
 
         .nav-link:hover, .nav-link.active {
@@ -605,13 +418,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 
         .nav-link.active i {
             color: var(--bup-blue);
-        }
-
-        /* Main Content */
-        .main-content {
-            margin-left: 280px;
-            padding: 30px 40px;
-            transition: all 0.3s ease;
         }
 
         /* Header */
@@ -646,7 +452,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             align-items: center;
         }
 
-        /* Search Bar */
+        /* Search Bar in Header */
         .search-container {
             position: relative;
             width: 300px;
@@ -695,7 +501,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             transform: scale(1.1);
         }
 
-        .notification-badge {
+        .badge-count {
             position: absolute;
             top: -8px;
             right: -8px;
@@ -726,23 +532,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 
         .cart-icon:hover {
             transform: scale(1.1);
-        }
-
-        .cart-badge {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            background: var(--bup-orange);
-            color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            border: 2px solid white;
         }
 
         /* Profile Dropdown */
@@ -791,7 +580,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             position: absolute;
             top: 100%;
             right: 0;
-            width: 320px;
+            width: 280px;
             background: var(--card-bg);
             border-radius: var(--radius-lg);
             box-shadow: var(--shadow-lg);
@@ -808,46 +597,34 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 
         .profile-header {
             background: var(--bup-gradient);
-            padding: 25px;
+            padding: 20px;
             color: white;
             text-align: center;
         }
 
         .profile-header-avatar {
-            width: 70px;
-            height: 70px;
+            width: 60px;
+            height: 60px;
             background: var(--bup-gradient-accent);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 15px;
-            font-size: 30px;
+            margin: 0 auto 10px;
+            font-size: 28px;
             font-weight: 700;
             color: var(--bup-blue);
             border: 3px solid white;
         }
 
         .profile-header-name {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: 700;
-            margin-bottom: 5px;
         }
 
         .profile-header-email {
-            font-size: 13px;
-            opacity: 0.9;
-            margin-bottom: 10px;
-        }
-
-        .profile-header-info {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
             font-size: 12px;
-            background: rgba(255,255,255,0.1);
-            padding: 8px;
-            border-radius: 30px;
+            opacity: 0.9;
         }
 
         .profile-menu-items {
@@ -941,62 +718,67 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             transform: translateX(26px);
         }
 
-        /* Stats Cards */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 25px;
-            margin-bottom: 40px;
-        }
-
-        .stat-card {
+        /* Filter Bar (below header) */
+        .filter-bar {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
             padding: 25px;
+            margin-bottom: 30px;
             box-shadow: var(--shadow-sm);
-            transition: all 0.3s ease;
             border: 1px solid rgba(225, 233, 240, 0.5);
             display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
             align-items: center;
-            justify-content: space-between;
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow-md);
+        .category-select {
+            min-width: 200px;
+            padding: 12px 20px;
+            border: 2px solid var(--bup-gray-light);
+            border-radius: 50px;
+            background: var(--card-bg);
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .category-select:focus {
+            outline: none;
             border-color: var(--bup-orange);
         }
 
-        .stat-info h3 {
-            font-size: 16px;
+        .btn-filter {
+            background: var(--bup-gradient-accent);
+            color: var(--bup-blue);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 0 #C7511E;
+        }
+
+        .btn-filter:hover {
+            transform: translateY(2px);
+            box-shadow: 0 2px 0 #C7511E;
+        }
+
+        .btn-reset {
+            background: var(--bup-gray-light);
+            color: var(--bup-blue);
+            border: none;
+            padding: 12px 30px;
+            border-radius: 50px;
             font-weight: 600;
-            color: var(--bup-gray);
-            margin-bottom: 10px;
+            text-decoration: none;
+            display: inline-block;
         }
 
-        .stat-number {
-            font-size: 36px;
-            font-weight: 800;
-            color: var(--text-primary);
-            line-height: 1;
-            margin-bottom: 5px;
-        }
-
-        .stat-label {
-            font-size: 13px;
-            color: var(--bup-gray);
-        }
-
-        .stat-icon {
-            width: 60px;
-            height: 60px;
-            background: linear-gradient(145deg, rgba(255,145,77,0.1), rgba(255,193,7,0.1));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 30px;
-            color: var(--bup-orange);
+        .btn-reset:hover {
+            background: var(--bup-orange);
+            color: white;
         }
 
         /* Books Grid */
@@ -1159,88 +941,31 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             color: white;
         }
 
-        /* Section Headers */
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .empty-state i {
+            font-size: 80px;
+            color: var(--bup-gray-light);
             margin-bottom: 20px;
         }
 
-        .section-header h3 {
+        .empty-state h3 {
             font-size: 24px;
             font-weight: 700;
             color: var(--text-primary);
-            margin-bottom: 0;
-        }
-
-        .section-header a {
-            color: var(--bup-orange);
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 15px;
-            transition: all 0.3s ease;
-        }
-
-        .section-header a:hover {
-            color: var(--bup-blue);
-        }
-
-        /* Become Seller Card */
-        .seller-card {
-            background: linear-gradient(145deg, #FFF8F0, #FFF3E0);
-            border: 2px dashed var(--bup-orange);
-            border-radius: var(--radius-lg);
-            padding: 30px;
-            text-align: center;
-            margin-bottom: 40px;
-        }
-
-        .seller-icon {
-            width: 80px;
-            height: 80px;
-            background: var(--bup-orange);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 20px;
-            font-size: 40px;
-            color: white;
-        }
-
-        .seller-card h3 {
-            font-size: 24px;
-            font-weight: 700;
             margin-bottom: 10px;
-            color: var(--bup-blue);
         }
 
-        .btn-seller {
-            display: inline-block;
-            background: var(--bup-gradient-accent);
-            color: var(--bup-blue);
-            padding: 15px 30px;
-            border-radius: 50px;
-            font-weight: 700;
-            text-decoration: none;
-            margin-top: 20px;
-            box-shadow: 0 6px 0 #C7511E;
-            transition: all 0.3s ease;
-        }
-
-        .btn-seller:hover {
-            transform: translateY(2px);
-            box-shadow: 0 3px 0 #C7511E;
-        }
-
-        /* Profile Card */
-        .profile-card {
-            background: var(--card-bg);
-            border-radius: var(--radius-lg);
-            padding: 30px;
-            box-shadow: var(--shadow-sm);
-            border: 1px solid rgba(225, 233, 240, 0.5);
+        .empty-state p {
+            color: var(--bup-gray);
+            margin-bottom: 30px;
         }
 
         /* Toast Container */
@@ -1266,19 +991,9 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             border-left: 5px solid white;
         }
 
-        .toast-message i {
-            font-size: 24px;
-        }
-
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0%); opacity: 1; }
         }
 
         /* Loading Spinner */
@@ -1336,25 +1051,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 margin-left: 0;
                 padding: 20px;
             }
-            
-            .stats-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
 
-            .search-container {
-                width: 200px;
-            }
-
-            .books-grid {
-                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-            }
-        }
-
-        @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
             .dashboard-header {
                 flex-direction: column;
                 align-items: flex-start;
@@ -1375,6 +1072,21 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             }
 
             .books-grid {
+                grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .category-select, .btn-filter, .btn-reset {
+                width: 100%;
+            }
+
+            .books-grid {
                 grid-template-columns: 1fr;
             }
         }
@@ -1387,7 +1099,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         <div class="spinner"></div>
     </div>
 
-    <!-- Toast Container for Notifications -->
+    <!-- Toast Container -->
     <div class="toast-container" id="toastContainer" style="display: none;">
         <div class="toast-message">
             <i class="bi bi-check-circle-fill"></i>
@@ -1397,28 +1109,20 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 
     <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
-        <!-- Sidebar Toggle Button -->
         <button class="sidebar-toggle" id="sidebarToggle">
             <i class="bi bi-chevron-left" id="toggleIcon"></i>
         </button>
 
         <div class="sidebar-logo">
             <div class="logo-container">
-                <!-- Glowing effect behind logo -->
                 <div class="logo-glow"></div>
-                
-                <!-- Circular Logo image with wrapper -->
                 <div class="logo-image-wrapper">
                     <img src="../assets/img/logo.jpg" alt="BUP Platform Book Resale" class="logo-image">
                 </div>
-                
-                <!-- Text below logo -->
                 <div class="logo-text-container">
                     <div class="logo-title">BUP Platform</div>
                     <div class="logo-subtitle">Book Resale</div>
                 </div>
-                
-                <!-- Static divider line -->
                 <div class="logo-divider"></div>
             </div>
         </div>
@@ -1437,24 +1141,14 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         <ul class="nav-menu">
             <li class="nav-item">
                 <a href="index.php" class="nav-link active">
-                    <i class="bi bi-speedometer2"></i>
-                    <span class="nav-text">Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="browse-books.php" class="nav-link">
                     <i class="bi bi-book"></i>
                     <span class="nav-text">Browse Books</span>
                 </a>
             </li>
-            <!-- MY ORDERS LINK ADDED HERE -->
             <li class="nav-item">
                 <a href="my_orders.php" class="nav-link">
                     <i class="bi bi-box"></i>
                     <span class="nav-text">My Orders</span>
-                    <?php if($stats['active_orders'] > 0): ?>
-                    <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['active_orders']; ?></span>
-                    <?php endif; ?>
                 </a>
             </li>
             <?php if ($is_seller): ?>
@@ -1482,17 +1176,21 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 <a href="cart.php" class="nav-link">
                     <i class="bi bi-cart"></i>
                     <span class="nav-text">My Cart</span>
-                    <?php if($stats['cart_count'] > 0): ?>
-                    <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['cart_count']; ?></span>
+                    <?php if ($cart_count > 0): ?>
+                    <span class="badge bg-warning text-dark ms-auto"><?php echo $cart_count; ?></span>
                     <?php endif; ?>
                 </a>
             </li>
             <li class="nav-item">
-                <a href="wishlist.php" class="nav-link">
-                    <i class="bi bi-heart"></i>
-                    <span class="nav-text">Wishlist</span>
+                <a href="notifications.php" class="nav-link">
+                    <i class="bi bi-bell"></i>
+                    <span class="nav-text">Notifications</span>
+                    <?php if ($unread_notifications > 0): ?>
+                    <span class="badge bg-danger ms-auto"><?php echo $unread_notifications; ?></span>
+                    <?php endif; ?>
                 </a>
             </li>
+            <!-- Wishlist item removed as per request -->
         </ul>
     </div>
 
@@ -1506,7 +1204,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
     <!-- Main Content -->
     <div class="main-content" id="mainContent">
         
-        <!-- Dashboard Header -->
+        <!-- Dashboard Header with Welcome, Search, Icons, Profile -->
         <div class="dashboard-header">
             <div class="page-title">
                 <h1>Welcome back, <?php echo htmlspecialchars(explode(' ', $user_name)[0]); ?>! 👋</h1>
@@ -1516,22 +1214,28 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 <!-- Search Bar -->
                 <div class="search-container">
                     <i class="bi bi-search search-icon"></i>
-                    <input type="text" class="search-input" id="searchInput" placeholder="Search books...">
+                    <form method="GET" style="margin:0;">
+                        <input type="text" name="search" class="search-input" placeholder="Search books..." value="<?php echo htmlspecialchars($search); ?>">
+                        <!-- Preserve category filter if any -->
+                        <?php if (!empty($category_filter)): ?>
+                        <input type="hidden" name="category" value="<?php echo htmlspecialchars($category_filter); ?>">
+                        <?php endif; ?>
+                    </form>
                 </div>
 
-                <!-- Simple Notification Icon -->
+                <!-- Notification Icon -->
                 <div class="notification-wrapper" onclick="window.location.href='notifications.php'">
                     <i class="bi bi-bell notification-icon"></i>
-                    <?php if($stats['notification_count'] > 0): ?>
-                    <span class="notification-badge"><?php echo $stats['notification_count']; ?></span>
+                    <?php if ($unread_notifications > 0): ?>
+                    <span class="badge-count"><?php echo $unread_notifications; ?></span>
                     <?php endif; ?>
                 </div>
 
                 <!-- Cart Icon -->
                 <div class="cart-wrapper" onclick="window.location.href='cart.php'">
                     <i class="bi bi-cart cart-icon"></i>
-                    <?php if($stats['cart_count'] > 0): ?>
-                    <span class="cart-badge"><?php echo $stats['cart_count']; ?></span>
+                    <?php if ($cart_count > 0): ?>
+                    <span class="badge-count"><?php echo $cart_count; ?></span>
                     <?php endif; ?>
                 </div>
 
@@ -1552,33 +1256,12 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                             </div>
                             <div class="profile-header-name"><?php echo htmlspecialchars($user_name); ?></div>
                             <div class="profile-header-email"><?php echo htmlspecialchars($user_email); ?></div>
-                            <div class="profile-header-info">
-                                <span><i class="bi bi-telephone"></i> <?php echo htmlspecialchars($profile_data['ContactNo'] ?? 'Not set'); ?></span>
-                                <span><i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars(substr($profile_data['Address'] ?? 'Not set', 0, 20)) . '...'; ?></span>
-                            </div>
                         </div>
                         
                         <div class="profile-menu-items">
                             <a href="profile.php" class="profile-menu-item">
                                 <i class="bi bi-person"></i>
                                 <span>Edit Profile</span>
-                            </a>
-                            
-                            <!-- MY ORDERS LINK ADDED HERE (changed from orders.php to my_orders.php) -->
-                            <a href="my_orders.php" class="profile-menu-item">
-                                <i class="bi bi-box"></i>
-                                <span>My Orders</span>
-                                <?php if($stats['active_orders'] > 0): ?>
-                                <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['active_orders']; ?></span>
-                                <?php endif; ?>
-                            </a>
-                            
-                            <a href="cart.php" class="profile-menu-item">
-                                <i class="bi bi-cart"></i>
-                                <span>My Cart</span>
-                                <?php if($stats['cart_count'] > 0): ?>
-                                <span class="badge bg-warning text-dark ms-auto"><?php echo $stats['cart_count']; ?></span>
-                                <?php endif; ?>
                             </a>
                             
                             <a href="settings.php" class="profile-menu-item">
@@ -1612,168 +1295,88 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             </div>
         </div>
 
-        <!-- Stats Grid -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-info">
-                    <h3>My Books</h3>
-                    <div class="stat-number"><?php echo $stats['listed_books']; ?></div>
-                    <span class="stat-label">Listed for sale</span>
-                </div>
-                <div class="stat-icon">
-                    <i class="bi bi-book"></i>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-info">
-                    <h3>Active Orders</h3>
-                    <div class="stat-number"><?php echo $stats['active_orders']; ?></div>
-                    <span class="stat-label">Pending delivery</span>
-                </div>
-                <div class="stat-icon">
-                    <i class="bi bi-truck"></i>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-info">
-                    <h3>Completed</h3>
-                    <div class="stat-number"><?php echo $stats['completed_trades']; ?></div>
-                    <span class="stat-label">Successful trades</span>
-                </div>
-                <div class="stat-icon">
-                    <i class="bi bi-check-circle"></i>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-info">
-                    <h3>In Cart</h3>
-                    <div class="stat-number"><?php echo $stats['cart_count']; ?></div>
-                    <span class="stat-label">Items in cart</span>
-                </div>
-                <div class="stat-icon">
-                    <i class="bi bi-cart"></i>
-                </div>
-            </div>
+        <!-- Category Filter Bar -->
+        <div class="filter-bar">
+            <form method="GET" class="d-flex gap-3 flex-wrap w-100">
+                <!-- Preserve search if any -->
+                <?php if (!empty($search)): ?>
+                <input type="hidden" name="search" value="<?php echo htmlspecialchars($search); ?>">
+                <?php endif; ?>
+                
+                <select name="category" class="category-select">
+                    <option value="">All Categories</option>
+                    <?php foreach ($categories as $cat): ?>
+                        <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $category_filter == $cat ? 'selected' : ''; ?>>
+                            <?php echo htmlspecialchars($cat); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+                
+                <button type="submit" class="btn-filter">
+                    <i class="bi bi-funnel me-2"></i>Apply Filter
+                </button>
+                
+                <a href="index.php" class="btn-reset">
+                    <i class="bi bi-arrow-repeat me-2"></i>Reset
+                </a>
+            </form>
         </div>
 
-        <!-- Available Books Section -->
-        <div class="section-header">
-            <h3><i class="bi bi-book me-2" style="color: var(--bup-orange);"></i>Available Books</h3>
-            <a href="browse-books.php">View All <i class="bi bi-arrow-right"></i></a>
-        </div>
-
-        <div class="books-grid">
-            <?php foreach ($available_books as $book): 
-                $stock_class = 'high-stock';
-                if ($book['StockQuantity'] <= 2) {
-                    $stock_class = 'low-stock';
-                } elseif ($book['StockQuantity'] <= 5) {
-                    $stock_class = 'medium-stock';
-                }
-            ?>
-            <div class="book-card">
-                <div class="book-image">
-                    <i class="bi bi-journal-bookmark-fill"></i>
-                    <span class="book-stock-badge <?php echo $stock_class; ?>">
-                        <i class="bi bi-box-seam me-1"></i><?php echo $book['StockQuantity']; ?> left
-                    </span>
-                </div>
-                <div class="book-details">
-                    <h3 class="book-title"><?php echo htmlspecialchars(substr($book['ProductName'], 0, 30)) . (strlen($book['ProductName']) > 30 ? '...' : ''); ?></h3>
-                    <span class="book-category"><?php echo htmlspecialchars($book['Category']); ?></span>
-                    <div class="book-price">৳<?php echo number_format($book['Price'], 2); ?></div>
-                    <div class="book-seller">
-                        <i class="bi bi-person-circle"></i>
-                        <span><?php echo htmlspecialchars($book['SellerName'] ?? 'Unknown Seller'); ?></span>
-                        <i class="bi bi-telephone ms-2"></i>
-                        <span><?php echo htmlspecialchars($book['SellerContact'] ?? 'N/A'); ?></span>
+        <!-- Books Grid -->
+        <?php if (empty($books)): ?>
+            <div class="empty-state">
+                <i class="bi bi-book"></i>
+                <h3>No Books Found</h3>
+                <p>We couldn't find any books matching your criteria.</p>
+                <a href="index.php" class="btn-reset" style="padding: 12px 30px;">Clear Filters</a>
+            </div>
+        <?php else: ?>
+            <div class="books-grid">
+                <?php foreach ($books as $book): 
+                    $stock_class = 'high-stock';
+                    if ($book['StockQuantity'] <= 2) {
+                        $stock_class = 'low-stock';
+                    } elseif ($book['StockQuantity'] <= 5) {
+                        $stock_class = 'medium-stock';
+                    }
+                ?>
+                <div class="book-card">
+                    <div class="book-image">
+                        <?php if (!empty($book['image']) && file_exists('../' . $book['image'])): ?>
+                            <img src="../<?php echo htmlspecialchars($book['image']); ?>" alt="<?php echo htmlspecialchars($book['ProductName']); ?>" style="width: 100%; height: 100%; object-fit: cover;">
+                        <?php else: ?>
+                            <i class="bi bi-journal-bookmark-fill"></i>
+                        <?php endif; ?>
+                        <span class="book-stock-badge <?php echo $stock_class; ?>">
+                            <i class="bi bi-box-seam me-1"></i><?php echo $book['StockQuantity']; ?> left
+                        </span>
                     </div>
-                    <div class="book-actions">
-                        <button class="btn-add-to-cart" onclick="addToCart(<?php echo $book['ProductID']; ?>, '<?php echo htmlspecialchars($book['ProductName']); ?>', this)" <?php echo $book['StockQuantity'] == 0 ? 'disabled' : ''; ?>>
-                            <i class="bi bi-cart-plus"></i>
-                            Add to Cart
-                        </button>
-                        <button class="btn-view-details" onclick="window.location.href='book-details.php?id=<?php echo $book['ProductID']; ?>'">
-                            <i class="bi bi-eye"></i>
-                        </button>
+                    <div class="book-details">
+                        <h3 class="book-title"><?php echo htmlspecialchars(substr($book['ProductName'], 0, 30)) . (strlen($book['ProductName']) > 30 ? '...' : ''); ?></h3>
+                        <span class="book-category"><?php echo htmlspecialchars($book['Category']); ?></span>
+                        <div class="book-price">₱<?php echo number_format($book['Price'], 2); ?></div>
+                        <div class="book-seller">
+                            <i class="bi bi-person-circle"></i>
+                            <span><?php echo htmlspecialchars($book['SellerName'] ?? 'Unknown Seller'); ?></span>
+                            <?php if (!empty($book['SellerContact'])): ?>
+                                <i class="bi bi-telephone ms-2"></i>
+                                <span><?php echo htmlspecialchars($book['SellerContact']); ?></span>
+                            <?php endif; ?>
+                        </div>
+                        <div class="book-actions">
+                            <button class="btn-add-to-cart" onclick="addToCart(<?php echo $book['ProductID']; ?>, '<?php echo htmlspecialchars($book['ProductName']); ?>', this)" <?php echo $book['StockQuantity'] == 0 ? 'disabled' : ''; ?>>
+                                <i class="bi bi-cart-plus"></i>
+                                Add to Cart
+                            </button>
+                            <button class="btn-view-details" onclick="window.location.href='book-details.php?id=<?php echo $book['ProductID']; ?>'">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
-        </div>
-
-        <!-- Become Seller Card (if not a seller) -->
-        <?php if (!$is_seller): ?>
-        <div class="seller-card">
-            <div class="seller-icon">
-                <i class="bi bi-shop"></i>
-            </div>
-            <h3>Want to sell your books?</h3>
-            <p style="color: var(--bup-gray); max-width: 500px; margin: 0 auto;">
-                Become a seller and start earning money from your used textbooks. It's free to join!
-            </p>
-            <a href="become-seller.php" class="btn-seller">
-                <i class="bi bi-person-plus me-2"></i>Become a Seller
-            </a>
-        </div>
         <?php endif; ?>
-
-        <!-- Tips for Success -->
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="profile-card">
-                    <div class="section-header">
-                        <h3><i class="bi bi-lightbulb me-2" style="color: var(--bup-yellow);"></i>Tips for Success</h3>
-                    </div>
-                    <div class="row g-4">
-                        <div class="col-md-3">
-                            <div class="d-flex gap-3 align-items-start">
-                                <div style="width: 40px; height: 40px; background: rgba(255,145,77,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--bup-orange); font-size: 20px;">
-                                    <i class="bi bi-camera"></i>
-                                </div>
-                                <div>
-                                    <h6 style="font-weight: 700;">Clear Photos</h6>
-                                    <p style="color: var(--bup-gray); font-size: 14px;">Books with clear cover photos sell 3x faster.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex gap-3 align-items-start">
-                                <div style="width: 40px; height: 40px; background: rgba(255,193,7,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--bup-yellow); font-size: 20px;">
-                                    <i class="bi bi-tag"></i>
-                                </div>
-                                <div>
-                                    <h6 style="font-weight: 700;">Competitive Pricing</h6>
-                                    <p style="color: var(--bup-gray); font-size: 14px;">Check similar listings to price your books right.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex gap-3 align-items-start">
-                                <div style="width: 40px; height: 40px; background: rgba(40,167,69,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #28a745; font-size: 20px;">
-                                    <i class="bi bi-chat"></i>
-                                </div>
-                                <div>
-                                    <h6 style="font-weight: 700;">Quick Response</h6>
-                                    <p style="color: var(--bup-gray); font-size: 14px;">Respond to messages promptly to close deals.</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3">
-                            <div class="d-flex gap-3 align-items-start">
-                                <div style="width: 40px; height: 40px; background: rgba(10,49,67,0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: var(--bup-blue); font-size: 20px;">
-                                    <i class="bi bi-star"></i>
-                                </div>
-                                <div>
-                                    <h6 style="font-weight: 700;">Accurate Condition</h6>
-                                    <p style="color: var(--bup-gray); font-size: 14px;">Honest descriptions build trust and repeat buyers.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Bootstrap JS -->
@@ -1790,24 +1393,18 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 sidebarToggle.addEventListener('click', function() {
                     sidebar.classList.toggle('collapsed');
                     
-                    // Update toggle icon
                     if (sidebar.classList.contains('collapsed')) {
                         toggleIcon.classList.remove('bi-chevron-left');
                         toggleIcon.classList.add('bi-chevron-right');
-                        
-                        // Save state to localStorage
                         localStorage.setItem('sidebarCollapsed', 'true');
                     } else {
                         toggleIcon.classList.remove('bi-chevron-right');
                         toggleIcon.classList.add('bi-chevron-left');
-                        
-                        // Save state to localStorage
                         localStorage.setItem('sidebarCollapsed', 'false');
                     }
                 });
             }
             
-            // Check localStorage for saved sidebar state
             const savedState = localStorage.getItem('sidebarCollapsed');
             if (savedState === 'true' && window.innerWidth > 992) {
                 sidebar.classList.add('collapsed');
@@ -1817,7 +1414,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 }
             }
             
-            // Reset on window resize if needed
             window.addEventListener('resize', function() {
                 if (window.innerWidth <= 992) {
                     sidebar.classList.remove('collapsed');
@@ -1839,55 +1435,32 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             });
         });
 
-        // Toggle sidebar on mobile
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             sidebar.classList.toggle('active');
         }
 
-        // Show/hide mobile menu button based on screen width
-        function checkMobileView() {
-            const sidebar = document.getElementById('sidebar');
-            const mobileBtn = document.getElementById('mobileMenuBtn');
-            
-            if (window.innerWidth <= 992) {
-                mobileBtn.style.display = 'block';
-                sidebar.classList.remove('active');
-            } else {
-                mobileBtn.style.display = 'none';
-                sidebar.classList.add('active');
-            }
-        }
-
-        window.addEventListener('resize', checkMobileView);
-        window.addEventListener('load', checkMobileView);
-
-        // Profile menu toggle
         function toggleProfileMenu() {
             const profileMenu = document.getElementById('profileMenu');
             profileMenu.classList.toggle('show');
         }
 
-        // Dark mode toggle
         function toggleDarkMode() {
             const isChecked = document.getElementById('darkModeToggle').checked;
             const theme = isChecked ? 'dark' : 'light';
             
             document.body.setAttribute('data-theme', theme);
             
-            // Save preference in cookie
             document.cookie = "dark_mode=" + (isChecked ? 'enabled' : 'disabled') + "; path=/; max-age=31536000";
             
             showToast('Dark mode ' + (isChecked ? 'enabled' : 'disabled'));
         }
 
-        // Show toast message
         function showToast(message, type = 'success') {
             const toastContainer = document.getElementById('toastContainer');
             const toastMessage = document.getElementById('toastMessage');
             const toast = toastContainer.querySelector('.toast-message');
             
-            // Set color based on type
             if (type === 'error') {
                 toast.style.background = '#dc3545';
             } else if (type === 'warning') {
@@ -1901,37 +1474,32 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             toastMessage.textContent = message;
             toastContainer.style.display = 'block';
             
-            // Auto hide after 3 seconds
             setTimeout(() => {
                 toastContainer.style.display = 'none';
             }, 3000);
             
-            // Hide on click
             toastContainer.addEventListener('click', function() {
                 this.style.display = 'none';
             });
         }
 
-        // Helper function to update cart badge
         function updateCartBadge(count) {
-            const cartBadge = document.querySelector('.cart-badge');
+            const cartBadge = document.querySelector('.cart-wrapper .badge-count');
             if (cartBadge) {
-                cartBadge.textContent = count;
-                if (count <= 0) {
-                    cartBadge.style.display = 'none';
-                } else {
+                if (count > 0) {
+                    cartBadge.textContent = count;
                     cartBadge.style.display = 'flex';
+                } else {
+                    cartBadge.style.display = 'none';
                 }
             }
-            
-            // Also update cart badge in sidebar if exists
+            // Also update sidebar badge
             const sidebarCartBadge = document.querySelector('.nav-link .badge');
             if (sidebarCartBadge) {
                 sidebarCartBadge.textContent = count;
             }
         }
 
-        // Helper function to animate cart icon
         function animateCartIcon() {
             const cartIcon = document.querySelector('.cart-icon');
             if (cartIcon) {
@@ -1943,58 +1511,36 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             }
         }
 
-        // FIXED ADD TO CART FUNCTION - ACTUALLY CALLS THE PHP FILE
         function addToCart(productId, productName, button) {
-            // Prevent if button is disabled
             if (button.disabled) return;
             
-            // Show loading spinner
             document.getElementById('loadingSpinner').style.display = 'flex';
             
-            // Disable the button
             button.disabled = true;
             const originalText = button.innerHTML;
             button.innerHTML = '<i class="bi bi-hourglass-split"></i> Adding...';
             
-            // Create form data
             const formData = new FormData();
             formData.append('product_id', productId);
             formData.append('quantity', 1);
             
-            // Send AJAX request to add-to-cart.php
             fetch('add-to-cart.php', {
                 method: 'POST',
                 body: formData
             })
             .then(response => response.json())
             .then(data => {
-                // Hide loading spinner
                 document.getElementById('loadingSpinner').style.display = 'none';
                 
-                // Re-enable button and restore text
                 button.disabled = false;
                 button.innerHTML = originalText;
                 
                 if (data.success) {
-                    // Show success message
                     showToast(`"${productName}" added to cart!`, 'success');
-                    
-                    // Update cart badge with the count from server
                     updateCartBadge(data.cart_count);
-                    
-                    // Animate the cart icon
                     animateCartIcon();
-                    
-                    // Update the "In Cart" stat card
-                    const cartStatNumber = document.querySelector('.stat-card:last-child .stat-number');
-                    if (cartStatNumber) {
-                        cartStatNumber.textContent = data.cart_count;
-                    }
                 } else {
-                    // Show error message
                     showToast(data.message || 'Failed to add item to cart', 'error');
-                    
-                    // If login required, redirect to login
                     if (data.message && data.message.includes('login')) {
                         setTimeout(() => {
                             window.location.href = '../login.php';
@@ -2004,32 +1550,14 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             })
             .catch(error => {
                 console.error('Error:', error);
-                
-                // Hide loading spinner
                 document.getElementById('loadingSpinner').style.display = 'none';
-                
-                // Re-enable button and restore text
                 button.disabled = false;
                 button.innerHTML = originalText;
-                
-                // Show error message
                 showToast('Failed to add item to cart. Please try again.', 'error');
             });
         }
 
-        // Search functionality
-        const searchInput = document.getElementById('searchInput');
-        
-        searchInput.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                const query = this.value.trim();
-                if (query.length > 0) {
-                    window.location.href = 'browse-books.php?search=' + encodeURIComponent(query);
-                }
-            }
-        });
-
-        // Show loading spinner on link clicks (except add-to-cart buttons)
+        // Show loading spinner on link clicks
         document.querySelectorAll('a').forEach(link => {
             link.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');
@@ -2039,7 +1567,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             });
         });
 
-        // Hide spinner on page load
         window.addEventListener('load', function() {
             document.getElementById('loadingSpinner').style.display = 'none';
         });

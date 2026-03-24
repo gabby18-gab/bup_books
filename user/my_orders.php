@@ -74,18 +74,18 @@ if (isset($_GET['cancel_order'])) {
             $notifyStmt->execute([$user_id, "Your order #$order_id has been cancelled successfully."]);
             
             $pdo->commit();
-            $message = "? Order #$order_id has been cancelled successfully!";
+            $message = "✅ Order #$order_id has been cancelled successfully!";
             
             // Redirect to remove the cancel parameter
             header('Location: my_orders.php?status=cancelled&message=' . urlencode($message));
             exit();
         } else {
             $pdo->rollBack();
-            $error = "? You cannot cancel this order. Only pending orders can be cancelled.";
+            $error = "❌ You cannot cancel this order. Only pending orders can be cancelled.";
         }
     } catch (PDOException $e) {
         $pdo->rollBack();
-        $error = "? Failed to cancel order: " . $e->getMessage();
+        $error = "❌ Failed to cancel order: " . $e->getMessage();
     }
 }
 
@@ -126,17 +126,17 @@ if (isset($_GET['confirm_received'])) {
             $notifyStmt->execute([$user_id, "Thank you! Order #$order_id has been marked as received."]);
             
             $pdo->commit();
-            $message = "? Order #$order_id has been marked as received! Thank you for shopping with us.";
+            $message = "✅ Order #$order_id has been marked as received! Thank you for shopping with us.";
             
             header('Location: my_orders.php?status=completed&message=' . urlencode($message));
             exit();
         } else {
             $pdo->rollBack();
-            $error = "? Invalid order or order cannot be confirmed as received.";
+            $error = "❌ Invalid order or order cannot be confirmed as received.";
         }
     } catch (PDOException $e) {
         $pdo->rollBack();
-        $error = "? Failed to confirm order: " . $e->getMessage();
+        $error = "❌ Failed to confirm order: " . $e->getMessage();
     }
 }
 
@@ -221,56 +221,221 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
     <style>
         :root {
             --bup-blue: #0A3143;
+            --bup-blue-light: #1C4E6C;
             --bup-orange: #FF914D;
+            --bup-orange-dark: #E67A3A;
             --bup-yellow: #FFC107;
+            --bup-white: #ffffff;
+            --bup-offwhite: #F8FAFC;
+            --bup-gray: #5A6C74;
+            --bup-gray-light: #E1E9F0;
             --bup-green: #28a745;
             --bup-red: #dc3545;
-            --bup-gray: #6c757d;
-            --bup-light-gray: #e9ecef;
+            --bup-gradient: linear-gradient(145deg, #0A3143, #1C4E6C);
+            --bup-gradient-accent: linear-gradient(145deg, #FF914D, #FFC107);
+            --shadow-sm: 0 5px 15px rgba(0,0,0,0.05);
+            --shadow-md: 0 10px 25px rgba(255,145,77,0.15);
+            --shadow-lg: 0 15px 35px rgba(10,49,67,0.2);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #f8f9fa;
+            background: var(--bup-offwhite);
             color: var(--bup-blue);
+            overflow-x: hidden;
         }
 
-        /* Navbar */
-        .navbar {
-            background: var(--bup-blue);
-            padding: 15px 0;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        /* Sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100vh;
+            background: var(--bup-gradient);
+            color: white;
+            padding: 30px 20px;
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            box-shadow: 5px 0 30px rgba(0,0,0,0.15);
         }
 
-        .navbar-brand {
-            font-size: 24px;
-            font-weight: 800;
-            color: var(--bup-orange) !important;
+        .sidebar-logo {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .logo-text {
+            font-size: 36px;
+            font-weight: 900;
+            background: linear-gradient(135deg, var(--bup-orange), var(--bup-yellow));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: 2px;
+        }
+
+        .logo-sub {
+            font-size: 14px;
+            color: var(--bup-yellow);
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .user-info {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px 15px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 20px;
+        }
+
+        .user-avatar {
+            width: 80px;
+            height: 80px;
+            background: var(--bup-gradient-accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 15px;
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--bup-blue);
+            border: 3px solid white;
+            box-shadow: 0 8px 0 #C7511E;
+        }
+
+        .user-name {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .user-email {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .nav-menu {
+            list-style: none;
+            padding: 0;
+            margin-top: 20px;
+        }
+
+        .nav-item {
+            margin-bottom: 5px;
         }
 
         .nav-link {
-            color: white !important;
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            border-radius: 12px;
+            transition: all 0.3s;
+            gap: 12px;
             font-weight: 500;
-            padding: 8px 16px !important;
         }
 
-        .nav-link:hover {
-            color: var(--bup-orange) !important;
+        .nav-link:hover, .nav-link.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            transform: translateX(5px);
         }
 
         .nav-link.active {
-            background: rgba(255,145,77,0.2);
-            border-radius: 30px;
+            background: var(--bup-gradient-accent);
+            color: var(--bup-blue);
+            font-weight: 700;
+            box-shadow: 0 5px 0 #C7511E;
+        }
+
+        .nav-link i {
+            font-size: 20px;
+            width: 25px;
         }
 
         /* Main Content */
         .main-content {
-            max-width: 1200px;
-            margin: 30px auto;
-            padding: 0 20px;
+            margin-left: 280px;
+            padding: 30px;
+            transition: all 0.3s ease;
         }
 
-        /* Page Header */
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--bup-gradient-accent);
+            border: none;
+            border-radius: 50%;
+            box-shadow: var(--shadow-lg);
+            color: var(--bup-blue);
+            font-size: 28px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            cursor: pointer;
+        }
+
+        /* Loading Spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--bup-gray-light);
+            border-top-color: var(--bup-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 260px;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
+
+        /* Page specific styles */
         .page-header {
             display: flex;
             justify-content: space-between;
@@ -280,6 +445,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             padding: 25px 30px;
             border-radius: 20px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border: 1px solid var(--bup-gray-light);
         }
 
         .page-header h1 {
@@ -293,7 +459,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             margin: 0;
         }
 
-        /* Stats Cards */
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -350,7 +515,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             font-weight: 500;
         }
 
-        /* Filter Bar */
         .filter-bar {
             background: white;
             border-radius: 16px;
@@ -360,6 +524,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             gap: 15px;
             flex-wrap: wrap;
             align-items: center;
+            border: 1px solid var(--bup-gray-light);
         }
 
         .search-box {
@@ -419,7 +584,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             color: white;
         }
 
-        /* Order Cards */
         .orders-container {
             display: flex;
             flex-direction: column;
@@ -506,43 +670,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             padding: 20px;
         }
 
-        .order-items {
-            margin-bottom: 15px;
-        }
-
-        .order-item {
-            display: flex;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px dashed #e1e1e1;
-        }
-
-        .order-item:last-child {
-            border-bottom: none;
-        }
-
-        .item-name {
-            flex: 1;
-            font-weight: 500;
-        }
-
-        .item-quantity {
-            background: var(--bup-orange);
-            color: white;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 12px;
-            font-weight: 700;
-            margin-left: 10px;
-        }
-
-        .item-price {
-            font-weight: 700;
-            color: var(--bup-orange);
-            min-width: 100px;
-            text-align: right;
-        }
-
         .product-list {
             background: #f8f9fa;
             padding: 15px;
@@ -554,6 +681,23 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
         .product-list i {
             color: var(--bup-orange);
             margin-right: 8px;
+        }
+
+        .cancellation-reason {
+            background: #f8d7da;
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #721c24;
+        }
+
+        .tracking-info {
+            background: #e8f4fd;
+            padding: 10px 15px;
+            border-radius: 12px;
+            margin-top: 10px;
+            font-size: 14px;
         }
 
         .order-footer {
@@ -649,35 +793,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             pointer-events: none;
         }
 
-        /* Tracking Info */
-        .tracking-info {
-            background: #e8f4fd;
-            padding: 10px 15px;
-            border-radius: 12px;
-            margin-top: 10px;
-            font-size: 14px;
-        }
-
-        .tracking-info i {
-            color: #007bff;
-            margin-right: 8px;
-        }
-
-        /* Cancellation Reason */
-        .cancellation-reason {
-            background: #f8d7da;
-            padding: 10px 15px;
-            border-radius: 12px;
-            margin-top: 10px;
-            font-size: 14px;
-            color: #721c24;
-        }
-
-        .cancellation-reason i {
-            margin-right: 8px;
-        }
-
-        /* Empty State */
         .empty-orders {
             text-align: center;
             padding: 60px 20px;
@@ -760,7 +875,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             font-weight: 600;
         }
 
-        /* Alert */
         .alert {
             border-radius: 12px;
             padding: 15px 20px;
@@ -779,63 +893,6 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             color: #dc3545;
             border-left: 5px solid #dc3545;
         }
-
-        /* Loading Spinner */
-        .spinner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top-color: var(--bup-orange);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-            .page-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
-            
-            .order-header {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .order-info {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 10px;
-            }
-            
-            .order-footer {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-            
-            .order-actions {
-                width: 100%;
-                justify-content: flex-start;
-            }
-        }
     </style>
 </head>
 <body>
@@ -845,45 +902,83 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
         <div class="spinner"></div>
     </div>
 
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg">
-        <div class="container">
-            <a class="navbar-brand" href="index.php">BUP BOOKS</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="index.php">Home</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="browse-books.php">Books</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="cart.php">
-                            <i class="bi bi-cart"></i> Cart
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link active" href="my_orders.php">
-                            <i class="bi bi-box"></i> My Orders
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="profile.php">
-                            <i class="bi bi-person"></i> <?php echo htmlspecialchars(explode(' ', $user_name)[0]); ?>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="../logout.php">
-                            <i class="bi bi-box-arrow-right"></i>
-                        </a>
-                    </li>
-                </ul>
-            </div>
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-text">BUP</div>
+            <div class="logo-sub">USER DASHBOARD</div>
         </div>
-    </nav>
+        
+        <div class="user-info" onclick="window.location.href='profile.php'">
+            <div class="user-avatar">
+                <?php echo strtoupper(substr($user_name, 0, 2)); ?>
+            </div>
+            <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
+            <div class="user-email"><?php echo htmlspecialchars($user['Email']); ?></div>
+        </div>
+        
+        <ul class="nav-menu">
+            <li class="nav-item">
+                <a href="dashboard.php" class="nav-link">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="my_orders.php" class="nav-link active">
+                    <i class="bi bi-box"></i>
+                    <span>My Orders</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="cart.php" class="nav-link">
+                    <i class="bi bi-cart"></i>
+                    <span>Shopping Cart</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="wishlist.php" class="nav-link">
+                    <i class="bi bi-heart"></i>
+                    <span>Wishlist</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="profile.php" class="nav-link">
+                    <i class="bi bi-person-gear"></i>
+                    <span>My Profile</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="addresses.php" class="nav-link">
+                    <i class="bi bi-geo-alt"></i>
+                    <span>Addresses</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="notifications.php" class="nav-link">
+                    <i class="bi bi-bell"></i>
+                    <span>Notifications</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="settings.php" class="nav-link">
+                    <i class="bi bi-gear"></i>
+                    <span>Settings</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="../logout.php" class="nav-link" style="margin-top: 20px; background: rgba(255,69,58,0.2);">
+                    <i class="bi bi-box-arrow-right"></i>
+                    <span>Logout</span>
+                </a>
+            </li>
+        </ul>
+    </div>
 
     <!-- Main Content -->
     <div class="main-content">
@@ -892,7 +987,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
         <div class="page-header">
             <div>
                 <h1><i class="bi bi-box me-2" style="color: var(--bup-orange);"></i>My Orders</h1>
-                <p><i class="bi bi-person-circle me-1"></i> <?php echo htmlspecialchars($user_name); ?> � <?php echo $counts['all']; ?> total orders</p>
+                <p><i class="bi bi-person-circle me-1"></i> <?php echo htmlspecialchars($user_name); ?> · <?php echo $counts['all']; ?> total orders</p>
             </div>
             <div>
                 <a href="profile.php" class="btn" style="background: var(--bup-light-gray); color: var(--bup-blue); padding: 10px 20px; border-radius: 30px; text-decoration: none;">
@@ -983,23 +1078,23 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
                     switch($order['Status']) {
                         case 'pending':
                             $status_class = 'status-pending';
-                            $status_text = '? To Pay';
+                            $status_text = '⏳ To Pay';
                             break;
                         case 'processing':
                             $status_class = 'status-processing';
-                            $status_text = '?? Processing';
+                            $status_text = '⚙️ Processing';
                             break;
                         case 'shipped':
                             $status_class = 'status-shipped';
-                            $status_text = '?? To Receive';
+                            $status_text = '🚚 To Receive';
                             break;
                         case 'completed':
                             $status_class = 'status-completed';
-                            $status_text = '? Completed';
+                            $status_text = '✅ Completed';
                             break;
                         case 'cancelled':
                             $status_class = 'status-cancelled';
-                            $status_text = '? Cancelled';
+                            $status_text = '❌ Cancelled';
                             break;
                     }
                 ?>
@@ -1038,7 +1133,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
                             <i class="bi bi-truck"></i>
                             <strong>Tracking Number:</strong> <?php echo htmlspecialchars($order['TrackingNumber']); ?>
                             <?php if (!empty($order['EstimatedDelivery'])): ?>
-                                <span class="ms-3">?? Estimated: <?php echo date('M d, Y', strtotime($order['EstimatedDelivery'])); ?></span>
+                                <span class="ms-3">📅 Estimated: <?php echo date('M d, Y', strtotime($order['EstimatedDelivery'])); ?></span>
                             <?php endif; ?>
                         </div>
                         <?php endif; ?>
@@ -1053,7 +1148,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
                     
                     <div class="order-footer">
                         <div class="order-total">
-                            Total: <span class="total-amount">?<?php echo number_format($order['TotalAmount'], 2); ?></span>
+                            Total: <span class="total-amount">₱<?php echo number_format($order['TotalAmount'], 2); ?></span>
                             <span class="ms-2 text-muted">(<?php echo $order['total_items']; ?> items)</span>
                         </div>
                         
@@ -1162,6 +1257,28 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <script>
+        // Toggle sidebar on mobile
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('active');
+        }
+
+        // Check mobile view
+        function checkMobileView() {
+            const sidebar = document.getElementById('sidebar');
+            const mobileBtn = document.getElementById('mobileMenuBtn');
+            
+            if (window.innerWidth <= 992) {
+                mobileBtn.style.display = 'flex';
+                sidebar.classList.remove('active');
+            } else {
+                mobileBtn.style.display = 'none';
+                sidebar.classList.add('active');
+            }
+        }
+
+        window.addEventListener('resize', checkMobileView);
+        window.addEventListener('load', checkMobileView);
+
         // Cancel order modal
         function showCancelModal(orderId) {
             const form = document.getElementById('cancelForm');
@@ -1178,7 +1295,7 @@ $user = $userStmt->fetch(PDO::FETCH_ASSOC);
             });
         }, 5000);
 
-        // Show loading spinner on link clicks
+        // Show loading spinner on link clicks (excluding modal triggers)
         document.querySelectorAll('a:not([data-bs-toggle]):not(.btn-close)').forEach(link => {
             link.addEventListener('click', function(e) {
                 const href = this.getAttribute('href');

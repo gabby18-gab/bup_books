@@ -996,7 +996,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                                     </div>
                                 </div>
                             </td>
-                            <td class="price">?<?php echo number_format($item['Price'], 2); ?></td>
+                            <td class="price">₱<?php echo number_format($item['Price'], 2); ?></td>
                             <td>
                                 <form method="post" class="quantity-form">
                                     <input type="hidden" name="cart_id" value="<?php echo $item['CartID']; ?>">
@@ -1011,7 +1011,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                                 </form>
                             </td>
                             <td class="price subtotal-<?php echo $item['CartID']; ?>">
-                                ?<?php echo number_format($subtotal, 2); ?>
+                                ₱<?php echo number_format($subtotal, 2); ?>
                             </td>
                             <td>
                                 <form method="post" onsubmit="return confirm('Remove this item from cart?');">
@@ -1031,7 +1031,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             <div class="cart-summary">
                 <div class="summary-row">
                     <span class="summary-label">Subtotal</span>
-                    <span class="summary-value">?<?php echo number_format($total, 2); ?></span>
+                    <span class="summary-value">₱<?php echo number_format($total, 2); ?></span>
                 </div>
                 <div class="summary-row">
                     <span class="summary-label">Shipping</span>
@@ -1039,7 +1039,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 </div>
                 <div class="summary-row total-row">
                     <span class="summary-label">Total</span>
-                    <span class="summary-value">?<?php echo number_format($total, 2); ?></span>
+                    <span class="summary-value">₱<?php echo number_format($total, 2); ?></span>
                 </div>
                 
                 <div class="cart-actions">

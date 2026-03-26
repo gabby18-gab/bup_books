@@ -19,6 +19,32 @@ try {
 
 $user_id = $_SESSION['user_id'];
 $user_name = $_SESSION['user_name'];
+$user_email = $_SESSION['user_email'] ?? ''; // Ensure email exists
+
+// Get user info for sidebar
+$userStmt = $pdo->prepare("SELECT Email FROM users WHERE UserID = ?");
+$userStmt->execute([$user_id]);
+$user = $userStmt->fetch(PDO::FETCH_ASSOC);
+if ($user) {
+    $user_email = $user['Email'];
+}
+
+// Check if user is a seller (for sidebar)
+$is_seller = false;
+$seller_id = null;
+$stmt = $pdo->prepare("SELECT SellerID FROM seller WHERE UserID = ?");
+$stmt->execute([$user_id]);
+$seller = $stmt->fetch(PDO::FETCH_ASSOC);
+if ($seller) {
+    $is_seller = true;
+    $seller_id = $seller['SellerID'];
+}
+
+// Unread notifications count
+$unread_notifications = 0;
+$stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE UserID = ? AND IsRead = 0");
+$stmt->execute([$user_id]);
+$unread_notifications = $stmt->fetchColumn();
 
 // Handle remove from cart
 if (isset($_POST['remove_item'])) {
@@ -76,7 +102,10 @@ if (!isset($db_error)) {
     }
 }
 
-// Handle dark mode preference
+// Cart count (already from $cart_items, but we need it for sidebar)
+$cart_count = count($cart_items);
+
+// Dark mode preference
 $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled';
 ?>
 
@@ -95,6 +124,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <style>
+        /* ========== GLOBAL VARIABLES (matching index.php) ========== */
         :root {
             --bup-blue: #0A3143;
             --bup-blue-light: #1C4E6C;
@@ -150,7 +180,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             transition: background-color 0.3s ease, color 0.3s ease;
         }
 
-        /* Sidebar (same as index.php) */
+        /* Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
@@ -246,18 +276,9 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         }
 
         @keyframes pulse {
-            0% {
-                transform: scale(0.95);
-                opacity: 0.5;
-            }
-            50% {
-                transform: scale(1.05);
-                opacity: 0.8;
-            }
-            100% {
-                transform: scale(0.95);
-                opacity: 0.5;
-            }
+            0% { transform: scale(0.95); opacity: 0.5; }
+            50% { transform: scale(1.05); opacity: 0.8; }
+            100% { transform: scale(0.95); opacity: 0.5; }
         }
 
         .logo-image-wrapper {
@@ -363,15 +384,9 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         }
 
         @keyframes badgePulse {
-            0% {
-                box-shadow: 0 0 0 0 rgba(255,193,7,0.7);
-            }
-            70% {
-                box-shadow: 0 0 0 10px rgba(255,193,7,0);
-            }
-            100% {
-                box-shadow: 0 0 0 0 rgba(255,193,7,0);
-            }
+            0% { box-shadow: 0 0 0 0 rgba(255,193,7,0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255,193,7,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,193,7,0); }
         }
 
         .nav-menu {
@@ -419,7 +434,82 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             color: var(--bup-blue);
         }
 
-        /* Cart Header */
+        /* Mobile menu button */
+        .mobile-menu-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: var(--bup-gradient-accent);
+            border: none;
+            border-radius: 50%;
+            box-shadow: var(--shadow-lg);
+            color: var(--bup-blue);
+            font-size: 28px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            cursor: pointer;
+        }
+
+        /* Loading Spinner */
+        .spinner-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--bup-gray-light);
+            border-top-color: var(--bup-orange);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive */
+        @media (max-width: 992px) {
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            .sidebar.active {
+                transform: translateX(0);
+            }
+            .sidebar.collapsed {
+                width: 280px;
+                transform: translateX(-100%);
+            }
+            .sidebar.collapsed.active {
+                transform: translateX(0);
+            }
+            .sidebar.collapsed ~ .main-content {
+                margin-left: 0;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 20px;
+            }
+            .mobile-menu-btn {
+                display: flex;
+            }
+        }
+
+        /* Cart specific styles (keep original) */
         .cart-header {
             display: flex;
             justify-content: space-between;
@@ -445,7 +535,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             font-size: 15px;
         }
 
-        /* Cart Table */
         .cart-container {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
@@ -586,7 +675,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             color: #dc3545;
         }
 
-        /* Cart Summary */
         .cart-summary {
             background: var(--card-bg);
             border-radius: var(--radius-lg);
@@ -672,7 +760,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             color: white;
         }
 
-        /* Empty Cart */
         .empty-cart {
             text-align: center;
             padding: 60px 20px;
@@ -717,7 +804,6 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             color: var(--bup-blue);
         }
 
-        /* Toast Container */
         .toast-container {
             position: fixed;
             bottom: 30px;
@@ -740,113 +826,9 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             border-left: 5px solid white;
         }
 
-        .toast-message i {
-            font-size: 24px;
-        }
-
         @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        /* Loading Spinner */
-        .spinner-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid var(--bup-gray-light);
-            border-top-color: var(--bup-orange);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Responsive */
-        @media (max-width: 992px) {
-            .sidebar {
-                transform: translateX(-100%);
-                width: 280px;
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .sidebar.collapsed {
-                width: 280px;
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.collapsed.active {
-                transform: translateX(0);
-            }
-            
-            .sidebar.collapsed ~ .main-content {
-                margin-left: 0;
-            }
-            
-            .main-content {
-                margin-left: 0;
-                padding: 20px;
-            }
-
-            .cart-table {
-                font-size: 14px;
-            }
-
-            .product-image {
-                width: 60px;
-                height: 80px;
-                font-size: 30px;
-            }
-
-            .product-details h3 {
-                font-size: 16px;
-            }
-
-            .cart-actions {
-                flex-direction: column;
-            }
-
-            .btn-checkout, .btn-continue {
-                text-align: center;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .cart-table th:nth-child(2),
-            .cart-table td:nth-child(2),
-            .cart-table th:nth-child(4),
-            .cart-table td:nth-child(4) {
-                display: none;
-            }
-
-            .cart-header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 15px;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
     </style>
 </head>
@@ -865,7 +847,12 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
         </div>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Mobile Menu Button -->
+    <button class="mobile-menu-btn" id="mobileMenuBtn" onclick="toggleSidebar()">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Sidebar (matching index.php) -->
     <div class="sidebar" id="sidebar">
         <!-- Sidebar Toggle Button -->
         <button class="sidebar-toggle" id="sidebarToggle">
@@ -874,21 +861,14 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
 
         <div class="sidebar-logo">
             <div class="logo-container">
-                <!-- Glowing effect behind logo -->
                 <div class="logo-glow"></div>
-                
-                <!-- Circular Logo image with wrapper -->
                 <div class="logo-image-wrapper">
                     <img src="../assets/img/logo.jpg" alt="BUP Platform Book Resale" class="logo-image">
                 </div>
-                
-                <!-- Text below logo -->
                 <div class="logo-text-container">
                     <div class="logo-title">BUP Platform</div>
                     <div class="logo-subtitle">Book Resale</div>
                 </div>
-                
-                <!-- Static divider line -->
                 <div class="logo-divider"></div>
             </div>
         </div>
@@ -898,49 +878,75 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
                 <?php echo strtoupper(substr($user_name, 0, 2)); ?>
             </div>
             <div class="user-name"><?php echo htmlspecialchars($user_name); ?></div>
-            <div class="user-email"><?php echo htmlspecialchars($_SESSION['user_email']); ?></div>
+            <div class="user-email"><?php echo htmlspecialchars($user_email); ?></div>
+            <?php if ($is_seller): ?>
+                <span class="seller-badge"><i class="bi bi-shop me-1"></i>SELLER</span>
+            <?php endif; ?>
         </div>
 
         <ul class="nav-menu">
             <li class="nav-item">
                 <a href="index.php" class="nav-link">
-                    <i class="bi bi-speedometer2"></i>
-                    <span class="nav-text">Dashboard</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="browse-books.php" class="nav-link">
                     <i class="bi bi-book"></i>
                     <span class="nav-text">Browse Books</span>
                 </a>
             </li>
             <li class="nav-item">
+                <a href="my_orders.php" class="nav-link">
+                    <i class="bi bi-box"></i>
+                    <span class="nav-text">My Orders</span>
+                </a>
+            </li>
+            <?php if ($is_seller): ?>
+            <li class="nav-item">
+                <a href="my-books.php" class="nav-link">
+                    <i class="bi bi-journal"></i>
+                    <span class="nav-text">My Books</span>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="sell.php" class="nav-link">
+                    <i class="bi bi-plus-circle"></i>
+                    <span class="nav-text">Sell a Book</span>
+                </a>
+            </li>
+            <?php else: ?>
+            <li class="nav-item">
+                <a href="become-seller.php" class="nav-link">
+                    <i class="bi bi-shop"></i>
+                    <span class="nav-text">Become a Seller</span>
+                </a>
+            </li>
+            <?php endif; ?>
+            <li class="nav-item">
                 <a href="cart.php" class="nav-link active">
                     <i class="bi bi-cart"></i>
                     <span class="nav-text">My Cart</span>
-                    <?php if(count($cart_items) > 0): ?>
-                    <span class="badge bg-warning text-dark ms-auto"><?php echo count($cart_items); ?></span>
+                    <?php if ($cart_count > 0): ?>
+                    <span class="badge bg-warning text-dark ms-auto"><?php echo $cart_count; ?></span>
+                    <?php endif; ?>
+                </a>
+            </li>
+            <li class="nav-item">
+                <a href="notifications.php" class="nav-link">
+                    <i class="bi bi-bell"></i>
+                    <span class="nav-text">Notifications</span>
+                    <?php if ($unread_notifications > 0): ?>
+                    <span class="badge bg-danger ms-auto"><?php echo $unread_notifications; ?></span>
                     <?php endif; ?>
                 </a>
             </li>
         </ul>
     </div>
 
-    <!-- Mobile Menu Toggle -->
-    <div style="position: fixed; bottom: 30px; right: 30px; z-index: 9999; display: none;" id="mobileMenuBtn">
-        <button onclick="toggleSidebar()" style="width: 60px; height: 60px; background: var(--bup-gradient-accent); border: none; border-radius: 50%; box-shadow: var(--shadow-lg); color: var(--bup-blue); font-size: 28px;">
-            <i class="bi bi-list"></i>
-        </button>
-    </div>
-
     <!-- Main Content -->
-    <div class="main-content" id="mainContent">
+    <div class="main-content">
         
         <!-- Cart Header -->
         <div class="cart-header">
             <div>
                 <h1><i class="bi bi-cart me-2" style="color: var(--bup-orange);"></i>Shopping Cart</h1>
-                <p><i class="bi bi-bag me-1"></i> <?php echo count($cart_items); ?> item(s) in your cart</p>
+                <p><i class="bi bi-bag me-1"></i> <?php echo $cart_count; ?> item(s) in your cart</p>
             </div>
             <div>
                 <a href="index.php" class="btn-continue">
@@ -1111,7 +1117,7 @@ $dark_mode = isset($_COOKIE['dark_mode']) && $_COOKIE['dark_mode'] === 'enabled'
             const mobileBtn = document.getElementById('mobileMenuBtn');
             
             if (window.innerWidth <= 992) {
-                mobileBtn.style.display = 'block';
+                mobileBtn.style.display = 'flex';
                 sidebar.classList.remove('active');
             } else {
                 mobileBtn.style.display = 'none';

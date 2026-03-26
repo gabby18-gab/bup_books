@@ -62,7 +62,7 @@ if (isset($_POST['update_product'])) {
     }
 }
 
-// Handle Add New Product
+// Handle Add New Product (with image upload)
 if (isset($_POST['add_product'])) {
     $product_name = $_POST['product_name'];
     $category = $_POST['category'];
@@ -70,16 +70,46 @@ if (isset($_POST['add_product'])) {
     $stock = $_POST['stock'];
     $seller_id = $_POST['seller_id'];
     $status = $_POST['status'];
-    $image = $_POST['image'] ?? 'default-book.jpg';
     
-    $stmt = $pdo->prepare("INSERT INTO product (ProductName, Category, Price, StockQuantity, Status, SellerID, image) VALUES (?, ?, ?, ?, ?, ?, ?)");
-    if ($stmt->execute([$product_name, $category, $price, $stock, $status, $seller_id, $image])) {
-        $message = "✅ Product added successfully!";
+    // Image upload handling
+    $image_path = '';
+    if (isset($_FILES['product_image']) && $_FILES['product_image']['error'] == 0) {
+        $allowed = ['jpg', 'jpeg', 'png', 'gif'];
+        $filename = $_FILES['product_image']['name'];
+        $ext = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $file_size = $_FILES['product_image']['size'];
+        $max_size = 2 * 1024 * 1024; // 2MB
         
-        $log = $pdo->prepare("INSERT INTO admin_logs (AdminID, Action, Details, IPAddress) VALUES (?, 'create', ?, ?)");
-        $log->execute([$admin_id, "Added new product: $product_name", $_SERVER['REMOTE_ADDR']]);
-    } else {
-        $error = "❌ Failed to add product.";
+        if (!in_array($ext, $allowed)) {
+            $error = "Only JPG, JPEG, PNG, and GIF files are allowed.";
+        } elseif ($file_size > $max_size) {
+            $error = "File size must be less than 2MB.";
+        } else {
+            $new_filename = uniqid() . '.' . $ext;
+            $upload_dir = '../uploads/products/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            $upload_path = $upload_dir . $new_filename;
+            if (move_uploaded_file($_FILES['product_image']['tmp_name'], $upload_path)) {
+                $image_path = 'uploads/products/' . $new_filename;
+            } else {
+                $error = "Failed to upload image. Check directory permissions.";
+            }
+        }
+    }
+    
+    // If no error, insert product
+    if (empty($error)) {
+        $stmt = $pdo->prepare("INSERT INTO product (ProductName, Category, Price, StockQuantity, Status, SellerID, image) VALUES (?, ?, ?, ?, ?, ?, ?)");
+        if ($stmt->execute([$product_name, $category, $price, $stock, $status, $seller_id, $image_path])) {
+            $message = "✅ Product added successfully!";
+            
+            $log = $pdo->prepare("INSERT INTO admin_logs (AdminID, Action, Details, IPAddress) VALUES (?, 'create', ?, ?)");
+            $log->execute([$admin_id, "Added new product: $product_name", $_SERVER['REMOTE_ADDR']]);
+        } else {
+            $error = "❌ Failed to add product.";
+        }
     }
 }
 
@@ -514,6 +544,13 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             justify-content: center;
             font-size: 24px;
             color: var(--bup-blue);
+            overflow: hidden;
+        }
+        
+        .product-image-sm img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
         }
 
         /* Stock Badges */
@@ -614,6 +651,16 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             border-radius: 12px;
             padding: 15px 20px;
             margin-bottom: 25px;
+        }
+        
+        /* Image preview */
+        .image-preview {
+            max-width: 100px;
+            max-height: 100px;
+            margin-top: 10px;
+            border-radius: 8px;
+            border: 1px solid #ddd;
+            display: none;
         }
     </style>
 </head>
@@ -812,7 +859,11 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
                             <td>
                                 <div class="d-flex align-items-center">
                                     <div class="product-image-sm me-3">
-                                        <i class="bi bi-journal-bookmark-fill"></i>
+                                        <?php if (!empty($product['image']) && file_exists('../' . $product['image'])): ?>
+                                            <img src="../<?php echo htmlspecialchars($product['image']); ?>" alt="<?php echo htmlspecialchars($product['ProductName']); ?>">
+                                        <?php else: ?>
+                                            <i class="bi bi-journal-bookmark-fill"></i>
+                                        <?php endif; ?>
                                     </div>
                                     <div>
                                         <strong><?php echo htmlspecialchars($product['ProductName']); ?></strong>
@@ -952,7 +1003,7 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
         </div>
     </div>
 
-    <!-- Add Product Modal -->
+    <!-- Add Product Modal (with image upload) -->
     <div class="modal fade" id="addProductModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -960,7 +1011,7 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
                     <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Add New Product</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
-                <form method="POST">
+                <form method="POST" enctype="multipart/form-data">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label class="form-label">Product Name</label>
@@ -994,6 +1045,12 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
                                 <option value="I">Inactive</option>
                             </select>
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label">Product Image (optional)</label>
+                            <input type="file" name="product_image" class="form-control" accept="image/*" onchange="previewImage(this)">
+                            <img id="imagePreview" class="image-preview" src="#" alt="Preview">
+                            <small class="text-muted">Allowed: JPG, JPEG, PNG, GIF. Max size: 2MB</small>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn-cancel" data-bs-dismiss="modal">Cancel</button>
@@ -1020,6 +1077,21 @@ $low_stock = $pdo->query("SELECT COUNT(*) FROM product WHERE StockQuantity < 3 A
             document.getElementById('edit_price').value = product.Price;
             document.getElementById('edit_stock').value = product.StockQuantity;
             document.getElementById('edit_status').value = product.Status;
+        }
+        
+        function previewImage(input) {
+            var preview = document.getElementById('imagePreview');
+            if (input.files && input.files[0]) {
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(input.files[0]);
+            } else {
+                preview.src = '#';
+                preview.style.display = 'none';
+            }
         }
 
         // Auto-hide alerts

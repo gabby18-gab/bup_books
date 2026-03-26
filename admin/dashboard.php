@@ -758,7 +758,7 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="stat-card">
                 <div class="stat-info">
                     <h3>Total Revenue</h3>
-                    <div class="stat-number">$<?php echo number_format($stats['total_revenue'], 2); ?></div>
+                    <div class="stat-number">₱<?php echo number_format($stats['total_revenue'], 2); ?></div>
                     <span class="stat-label">Completed payments</span>
                 </div>
                 <div class="stat-icon">
@@ -841,7 +841,7 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                     <div class="table-responsive">
                         <table class="table">
                             <thead>
-                                <tr>
+                                32
                                     <th>Order ID</th>
                                     <th>Customer</th>
                                     <th>Amount</th>
@@ -854,7 +854,7 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                                 <tr>
                                     <td><strong>#<?php echo $order['OrderID']; ?></strong></td>
                                     <td><?php echo htmlspecialchars($order['UserName']); ?></td>
-                                    <td style="font-weight: 700; color: var(--bup-orange);">$<?php echo number_format($order['TotalAmount'], 2); ?></td>
+                                    <td style="font-weight: 700; color: var(--bup-orange);">₱<?php echo number_format($order['TotalAmount'], 2); ?></td>
                                     <td>
                                         <span class="status-badge <?php 
                                             echo $order['Status'] == 'completed' ? 'status-completed' : 
@@ -894,7 +894,7 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
             <div class="table-responsive">
                 <table class="table">
                     <thead>
-                        <tr>
+                        32
                             <th>Product</th>
                             <th>Price</th>
                             <th>Total Sold</th>
@@ -906,9 +906,9 @@ $recent_logs = $stmt->fetchAll(PDO::FETCH_ASSOC);
                         <?php foreach ($top_products as $product): ?>
                         <tr>
                             <td style="font-weight: 600;"><?php echo htmlspecialchars($product['ProductName']); ?></td>
-                            <td>$<?php echo number_format($product['Price'], 2); ?></td>
+                            <td>₱<?php echo number_format($product['Price'], 2); ?></td>
                             <td><?php echo $product['TotalSold']; ?> units</td>
-                            <td style="font-weight: 700; color: var(--bup-orange);">$<?php echo number_format($product['Price'] * $product['TotalSold'], 2); ?></td>
+                            <td style="font-weight: 700; color: var(--bup-orange);">₱<?php echo number_format($product['Price'] * $product['TotalSold'], 2); ?></td>
                             <td>
                                 <a href="products.php?view=<?php echo $product['ProductID']; ?>" class="btn-action btn-view">
                                     <i class="bi bi-eye"></i>

@@ -171,7 +171,7 @@ $dates = $stmt->fetch(PDO::FETCH_ASSOC);
             color: var(--bup-blue);
         }
 
-        /* Sidebar (copy from dashboard) */
+        /* Sidebar */
         .sidebar {
             position: fixed;
             top: 0;
@@ -593,6 +593,12 @@ $dates = $stmt->fetch(PDO::FETCH_ASSOC);
                 </a>
             </li>
             <li class="nav-item">
+                <a href="pending_products.php" class="nav-link">
+                    <i class="bi bi-clock-history"></i>
+                    <span>Pending Approvals</span>
+                </a>
+            </li>
+            <li class="nav-item">
                 <a href="orders.php" class="nav-link">
                     <i class="bi bi-cart"></i>
                     <span>Orders</span>
@@ -614,18 +620,6 @@ $dates = $stmt->fetch(PDO::FETCH_ASSOC);
                 <a href="admins.php" class="nav-link">
                     <i class="bi bi-shield"></i>
                     <span>Admins</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="logs.php" class="nav-link">
-                    <i class="bi bi-journal-text"></i>
-                    <span>Activity Logs</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a href="reports.php" class="nav-link">
-                    <i class="bi bi-graph-up"></i>
-                    <span>Reports</span>
                 </a>
             </li>
             <li class="nav-item">

@@ -701,7 +701,7 @@ $total_revenue = $pdo->query("SELECT SUM(TotalAmount) FROM orders WHERE PaymentS
             </div>
             <div class="stat-card">
                 <h6>Total Revenue</h6>
-                <h2 style="color: var(--bup-orange);">৳<?php echo number_format($total_revenue, 2); ?></h2>
+                <h2 style="color: var(--bup-orange);">₱<?php echo number_format($total_revenue, 2); ?></h2>
             </div>
         </div>
 
@@ -759,7 +759,8 @@ $total_revenue = $pdo->query("SELECT SUM(TotalAmount) FROM orders WHERE PaymentS
             <div class="table-responsive">
                 <table class="table">
                     <thead>
-                        32<th>Order ID</th>
+                        <tr>
+                            <th>Order ID</th>
                             <th>Date</th>
                             <th>Customer</th>
                             <th>Items</th>
@@ -777,7 +778,7 @@ $total_revenue = $pdo->query("SELECT SUM(TotalAmount) FROM orders WHERE PaymentS
                                 <td><?php echo date('M d, Y', strtotime($order['OrderDate'])); ?></td>
                                 <td><?php echo htmlspecialchars($order['UserName']); ?></td>
                                 <td><?php echo $order['total_items']; ?> items</td>
-                                <td class="order-amount">৳<?php echo number_format($order['TotalAmount'], 2); ?></td>
+                                <td class="order-amount">₱<?php echo number_format($order['TotalAmount'], 2); ?></td>
                                 <td>
                                     <span class="status-badge status-<?php echo $order['Status']; ?>">
                                         <?php echo ucfirst($order['Status']); ?>
